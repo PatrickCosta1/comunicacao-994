@@ -17,7 +17,10 @@ app.use("/api/eventos-recorrentes", recorrentesRouter);
 app.use("/api/mensagens", mensagensRouter);
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", version: "2", emailRoute: "registada" });
+});
+app.get("/api/test-enviar", (_req, res) => {
+  res.json({ message: "rota de teste funciona" });
 });
 
 const PORT = process.env.PORT || 3001;

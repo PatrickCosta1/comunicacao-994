@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "node node_modules/typescript/bin/tsc || true",
+    "start": "node node_modules/tsx/dist/cli.mjs src/index.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
