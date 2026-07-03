@@ -25,6 +25,7 @@ export interface Conteudo {
   data_acontecimento: string | null;
   estado: "pendente" | "publicado" | "concluido";
   equipas_responsaveis: { id: string; nome: string }[];
+  published_at: string | null;
   created_at: string;
 }
 

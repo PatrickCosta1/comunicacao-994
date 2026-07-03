@@ -4,13 +4,12 @@ import type { Conteudo, TipoConteudo, Equipa } from "../types";
 
 const API = "/api";
 
-const TABS: { tipo: TipoConteudo; label: string; icon: string }[] = [
-  { tipo: "atividade", label: "Atividades", icon: "📅" },
-  { tipo: "video", label: "Vídeos", icon: "🎥" },
-  { tipo: "feriado", label: "Feriados", icon: "🎉" },
-  { tipo: "aviso", label: "Avisos", icon: "📢" },
-  { tipo: "quiz", label: "Quizzes", icon: "❓" },
-  { tipo: "pensamento", label: "Pensamentos", icon: "💭" },
+const TABS: { tipo: TipoConteudo; label: string; icon: string; btnLabel: string }[] = [
+  { tipo: "atividade", label: "Atividades", icon: "📅", btnLabel: "📅 Nova Atividade" },
+  { tipo: "video", label: "Vídeos", icon: "🎥", btnLabel: "🎥 Novo Vídeo" },
+  { tipo: "aviso", label: "Avisos", icon: "📢", btnLabel: "📢 Novo Aviso" },
+  { tipo: "quiz", label: "Quizzes", icon: "❓", btnLabel: "❓ Novo Quiz" },
+  { tipo: "pensamento", label: "Pensamentos", icon: "💭", btnLabel: "💭 Novo Pensamento" },
 ];
 
 const SECCOES = ["Lobitos", "Exploradores", "Pioneiros", "Caminheiros", "Agrupamento"];
@@ -82,9 +81,25 @@ export default function Conteudos() {
     <div className="max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">📋 Conteúdos</h1>
-        <button onClick={() => setShowModal(activeTab === "aviso" ? "aviso_manual" : "novo")}
-          className="px-5 py-2.5 bg-gradient-to-r from-scout-600 to-scout-500 text-white rounded-xl text-sm font-medium hover:from-scout-700 hover:to-scout-600 shadow-lg shadow-scout-200 transition-all active:scale-[0.98]"
-        >➕ Novo</button>
+
+        {/* Botão específico por tab */}
+        {activeTab === "aviso" ? (
+          <div className="flex gap-2">
+            <button onClick={() => setShowModal("hora_piedade")}
+              className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-xl text-sm font-medium hover:from-purple-700 hover:to-purple-600 shadow-lg shadow-purple-200 transition-all active:scale-[0.98]">
+              ⛪ Hora de Piedade
+            </button>
+            <button onClick={() => setShowModal("aviso_manual")}
+              className="px-4 py-2.5 bg-gradient-to-r from-scout-600 to-scout-500 text-white rounded-xl text-sm font-medium hover:from-scout-700 hover:to-scout-600 shadow-lg shadow-scout-200 transition-all active:scale-[0.98]">
+              📢 Novo Aviso
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setShowModal("novo")}
+            className="px-5 py-2.5 bg-gradient-to-r from-scout-600 to-scout-500 text-white rounded-xl text-sm font-medium hover:from-scout-700 hover:to-scout-600 shadow-lg shadow-scout-200 transition-all active:scale-[0.98]">
+            {TABS.find((t) => t.tipo === activeTab)?.btnLabel || "➕ Novo"}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -103,18 +118,6 @@ export default function Conteudos() {
       {/* Avisos tem UI especial com modais */}
       {activeTab === "aviso" ? (
         <>
-          {/* Botoes de ação */}
-          <div className="flex gap-3">
-            <button onClick={() => setShowModal("hora_piedade")}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-purple-500 text-white rounded-xl text-sm font-medium hover:from-purple-700 hover:to-purple-600 shadow-lg shadow-purple-200 transition-all active:scale-[0.98]">
-              <span className="text-lg">⛪</span> Hora de Piedade
-            </button>
-            <button onClick={() => setShowModal("aviso_manual")}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-scout-600 to-scout-500 text-white rounded-xl text-sm font-medium hover:from-scout-700 hover:to-scout-600 shadow-lg shadow-scout-200 transition-all active:scale-[0.98]">
-              <span className="text-lg">📢</span> Novo Aviso
-            </button>
-          </div>
-
           <HoraPiedadeModal
             open={showModal === "hora_piedade"}
             onClose={() => setShowModal(false)}
