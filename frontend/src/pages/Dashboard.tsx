@@ -78,49 +78,53 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">📊 Dashboard</h1>
-        <p className="text-gray-500 mt-1">O que precisa da tua atenção agora.</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center gap-3">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📊 Dashboard</h1>
+        {atrasados.length > 0 && (
+          <span className="px-2.5 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full animate-pulse">
+            {atrasados.length} atrasado{atrasados.length > 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
-      {/* Cards de urgência */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className={`rounded-2xl border p-5 ${atrasados.length > 0 ? "bg-red-50 border-red-300 animate-pulse" : "bg-gray-50 border-gray-200"}`}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">🔴 Atrasados</p>
-          <p className={`text-3xl font-bold ${atrasados.length > 0 ? "text-red-600" : "text-gray-400"}`}>{atrasados.length}</p>
-          <p className="text-xs mt-1.5 text-gray-400">{atrasados.length > 0 ? "Precisam de ação urgente!" : "Nenhum atrasado 👍"}</p>
+      {/* Cards — 2 col mobile, 4 col desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${atrasados.length > 0 ? "bg-red-50 border-red-300" : "bg-gray-50 border-gray-200"}`}>
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5 sm:mb-1">🔴 Atrasados</p>
+          <p className={`text-xl sm:text-3xl font-bold ${atrasados.length > 0 ? "text-red-600" : "text-gray-400"}`}>{atrasados.length}</p>
+          <p className="text-[10px] sm:text-xs mt-1 text-gray-400 truncate">{atrasados.length > 0 ? "Urgente!" : "Tudo em dia 👍"}</p>
         </div>
-        <div className={`rounded-2xl border p-5 ${vencemHoje.length > 0 ? "bg-amber-50 border-amber-300" : "bg-gray-50 border-gray-200"}`}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">🟡 Vencem Hoje</p>
-          <p className={`text-3xl font-bold ${vencemHoje.length > 0 ? "text-amber-600" : "text-gray-400"}`}>{vencemHoje.length}</p>
-          <p className="text-xs mt-1.5 text-gray-400">{vencemHoje.length > 0 ? "Publicar ainda hoje!" : "Nada para hoje"}</p>
+        <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${vencemHoje.length > 0 ? "bg-amber-50 border-amber-300" : "bg-gray-50 border-gray-200"}`}>
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5 sm:mb-1">🟡 Hoje</p>
+          <p className={`text-xl sm:text-3xl font-bold ${vencemHoje.length > 0 ? "text-amber-600" : "text-gray-400"}`}>{vencemHoje.length}</p>
+          <p className="text-[10px] sm:text-xs mt-1 text-gray-400 truncate">{vencemHoje.length > 0 ? "Publicar hoje!" : "Nada hoje"}</p>
         </div>
-        <Card title="Publicações Pendentes" value={(atrasados.length + vencemHoje.length + conteudos.filter(c => c.data_publicacao && c.data_publicacao > hoje && c.estado !== "publicado").length).toString()} subtitle="Futuras" color="bg-blue-50 border-blue-200" />
-        <div className="rounded-2xl border p-5 bg-scout-50 border-scout-200">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">✅ Cumprimento</p>
-          <p className="text-3xl font-bold text-scout-700">{totalPublicados > 0 ? Math.round(totalPontuais / totalPublicados * 100) : 0}%</p>
-          <p className="text-xs mt-1.5 text-gray-400">{totalPontuais}/{totalPublicados} publicações a tempo</p>
+        <Card title="📱 Pendentes" value={(atrasados.length + vencemHoje.length + conteudos.filter(c => c.data_publicacao && c.data_publicacao > hoje && c.estado !== "publicado").length).toString()} subtitle="Futuras" color="bg-blue-50 border-blue-200" />
+        <div className="rounded-xl sm:rounded-2xl border p-3 sm:p-5 bg-scout-50 border-scout-200">
+          <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5 sm:mb-1">✅ Cumprimento</p>
+          <p className="text-xl sm:text-3xl font-bold text-scout-700">{totalPublicados > 0 ? Math.round(totalPontuais / totalPublicados * 100) : 0}%</p>
+          <p className="text-[10px] sm:text-xs mt-1 text-gray-400 truncate">{totalPontuais}/{totalPublicados} a tempo</p>
         </div>
       </div>
 
       {/* Secção de Urgência - Atrasados */}
       {atrasados.length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-red-200 p-5 shadow-lg">
-          <h2 className="font-semibold text-red-700 mb-3">🔴 Publicações Atrasadas</h2>
+        <div className="bg-white rounded-xl sm:rounded-2xl border-2 border-red-200 p-4 sm:p-5">
+          <h2 className="text-sm sm:text-base font-semibold text-red-700 mb-3">🔴 Atrasadas</h2>
           <div className="space-y-2">
             {atrasados.map((c) => {
               const dias = daysBetween(hojeDate, new Date(c.data_publicacao + "T00:00:00"));
               return (
-                <div key={c.id} className="flex items-center justify-between py-2 px-3 bg-red-50 rounded-xl">
-                  <div>
-                    <p className="text-sm font-medium text-red-800">{c.title}</p>
-                    <p className="text-xs text-red-500">
-                      {c.tipo} · Devia: {new Date(c.data_publicacao + "T00:00:00").toLocaleDateString("pt-PT")}
+                <div key={c.id} className="flex items-center gap-3 py-2 px-3 bg-red-50 rounded-xl">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-800 truncate">{c.title}</p>
+                    <p className="text-xs text-red-500 truncate">
+                      {c.tipo} · {new Date(c.data_publicacao + "T00:00:00").toLocaleDateString("pt-PT")}
                     </p>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 bg-red-200 text-red-700 rounded-full">
-                    {Math.abs(dias)} dias atrasado
+                  <span className="shrink-0 text-xs font-bold px-3 py-1 bg-red-200 text-red-700 rounded-full">
+                    {Math.abs(dias)}d
                   </span>
                 </div>
               );
@@ -131,13 +135,13 @@ export default function Dashboard() {
 
       {/* Vencem Hoje */}
       {vencemHoje.length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-amber-200 p-5">
-          <h2 className="font-semibold text-amber-700 mb-3">🟡 Publicam Hoje</h2>
+        <div className="bg-white rounded-xl sm:rounded-2xl border-2 border-amber-200 p-4 sm:p-5">
+          <h2 className="text-sm sm:text-base font-semibold text-amber-700 mb-3">🟡 Hoje</h2>
           <div className="space-y-2">
             {vencemHoje.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 px-3 bg-amber-50 rounded-xl">
-                <p className="text-sm font-medium text-amber-800">{c.title}</p>
-                <span className="text-xs font-bold px-3 py-1 bg-amber-200 text-amber-700 rounded-full">Vence hoje</span>
+              <div key={c.id} className="flex items-center gap-3 py-2 px-3 bg-amber-50 rounded-xl">
+                <p className="flex-1 text-sm font-medium text-amber-800 truncate">{c.title}</p>
+                <span className="shrink-0 text-xs font-bold px-3 py-1 bg-amber-200 text-amber-700 rounded-full">Hoje</span>
               </div>
             ))}
           </div>
@@ -145,16 +149,16 @@ export default function Dashboard() {
       )}
 
       {/* Atividades da Semana */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="font-semibold text-gray-800 mb-3">📅 Atividades desta Semana</h2>
+      <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-4 sm:p-5">
+        <h2 className="text-sm sm:text-base font-semibold text-gray-800 mb-3">📅 Atividades</h2>
         {atvSemana.length === 0 ? (
-          <p className="text-sm text-gray-400">Nenhuma atividade esta semana.</p>
+          <p className="text-sm text-gray-400">Nenhuma esta semana.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="divide-y divide-gray-50">
             {atvSemana.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <p className="text-sm font-medium text-gray-700">{c.title}</p>
-                <span className="text-xs text-gray-400">
+              <div key={c.id} className="flex items-center justify-between py-2.5">
+                <p className="text-sm font-medium text-gray-700 truncate">{c.title}</p>
+                <span className="shrink-0 text-xs text-gray-400 ml-2">
                   {c.date_start && new Date(c.date_start).toLocaleDateString("pt-PT", { weekday: "short", day: "numeric" })}
                 </span>
               </div>
@@ -168,10 +172,10 @@ export default function Dashboard() {
 
 function Card({ title, value, subtitle, color }: { title: string; value: string; subtitle: string; color: string }) {
   return (
-    <div className={`rounded-2xl border p-5 ${color} hover:shadow-lg transition-all duration-200`}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">{title}</p>
-      <p className="text-3xl font-bold text-gray-800">{value}</p>
-      <p className="text-xs mt-1.5 text-gray-400">{subtitle}</p>
+    <div className={`rounded-xl sm:rounded-2xl border p-3 sm:p-5 ${color} hover:shadow-md transition-all duration-200`}>
+      <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-gray-500 mb-0.5 sm:mb-1">{title}</p>
+      <p className="text-xl sm:text-3xl font-bold text-gray-800">{value}</p>
+      <p className="text-[10px] sm:text-xs mt-1 text-gray-400 truncate">{subtitle}</p>
     </div>
   );
 }
