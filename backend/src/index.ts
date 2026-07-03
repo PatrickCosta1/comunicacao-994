@@ -1,5 +1,10 @@
 import express from "express";
 import cors from "cors";
+import { config } from "dotenv";
+import { initEmail } from "./lib/email";
+
+config();
+initEmail();
 
 const app = express();
 app.use(cors());

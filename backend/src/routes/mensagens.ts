@@ -1,22 +1,9 @@
 import { Router, Request, Response } from "express";
-import nodemailer from "nodemailer";
 import { supabase } from "../lib/supabase";
 import { getSemanaInfo } from "../lib/utils";
+import { enviarEmail } from "../lib/email";
 
 const router = Router();
-
-function criarTransporte() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    auth: { user, pass },
-    connectionTimeout: 15000,
-  });
-}
 
 // GET /api/mensagens/semanal - Gerar mensagem semanal
 router.get("/semanal", async (_req: Request, res: Response) => {
@@ -201,14 +188,6 @@ router.get("/historico", async (_req: Request, res: Response) => {
 
 // POST /api/mensagens/enviar-email - Gera mensagem semanal e envia por email
 router.post("/enviar-email", async (_req: Request, res: Response) => {
-  const transport = criarTransporte();
-  if (!transport) {
-    return res.status(400).json({
-      error: "EMAIL_USER e EMAIL_PASS nao definidos no .env",
-      instrucoes: "Cria uma palavra-passe de app no Google e adiciona ao .env: EMAIL_USER=teuemail@gmail.com EMAIL_PASS=passwordapp"
-    });
-  }
-
   // Reutilizar a logica da mensagem semanal
   const { inicio, fim } = getSemanaInfo();
 
@@ -270,21 +249,16 @@ router.post("/enviar-email", async (_req: Request, res: Response) => {
   msg += `Boa semana a todos! 🚀`;
 
   // Enviar email
-  const para = process.env.EMAIL_TO || process.env.EMAIL_USER;
+  const subject = `Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`;
   try {
-    const info = await transport.sendMail({
-      from: process.env.EMAIL_USER,
-      to: para,
-      subject: `Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`,
-      text: msg,
-    });
+    const info = await enviarEmail(subject, msg);
 
     await supabase.from("mensagens_semanais").upsert({
       conteudo: msg,
       semana_inicio: inicio,
     }, { onConflict: "semana_inicio" });
 
-    res.json({ success: true, message: "Email enviado!", destinatario: para, messageId: info.messageId });
+    res.json({ success: true, message: "Email enviado!", destinatario: process.env.EMAIL_TO || "patrickcosta1605@gmail.com", messageId: info.messageId });
   } catch (err: any) {
     console.error("Erro ao enviar email:", err);
     res.status(500).json({

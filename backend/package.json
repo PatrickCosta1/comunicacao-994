@@ -7,17 +7,16 @@
     "start": "node node_modules/tsx/dist/cli.mjs src/index.ts"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "@supabase/supabase-js": "^2.45.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
-    "express": "^4.21.0",
-    "nodemailer": "^9.0.3"
+    "express": "^4.21.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.0.0",
-    "@types/nodemailer": "^8.0.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   }
