@@ -1,6 +1,14 @@
 -- Adicionar coluna published_at para tracking de cumprimento
 alter table conteudos add column if not exists published_at timestamptz;
 
+-- Remover 'concluido' da constraint (agora so 'pendente' e 'publicado')
+alter table conteudos drop constraint if exists conteudos_estado_check;
+alter table conteudos add constraint conteudos_estado_check
+  check (estado in ('pendente','publicado'));
+
+-- Migrar 'concluido' para 'publicado'
+update conteudos set estado = 'publicado' where estado = 'concluido';
+
 -- Feriados pre-populados (2026)
 insert into conteudos (tipo, title, descricao, data_publicacao, estado) values
   ('feriado', 'Ano Novo', 'Ano Novo', '2026-01-01', 'pendente'),

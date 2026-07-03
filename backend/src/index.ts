@@ -7,13 +7,11 @@ app.use(express.json());
 
 // Import routes
 import equipasRouter from "./routes/equipas";
-import atividadesRouter from "./routes/atividades";
 import conteudosRouter from "./routes/conteudos";
 import recorrentesRouter from "./routes/recorrentes";
 import mensagensRouter from "./routes/mensagens";
 
 app.use("/api/equipas", equipasRouter);
-app.use("/api/atividades", atividadesRouter);
 app.use("/api/conteudos", conteudosRouter);
 app.use("/api/eventos-recorrentes", recorrentesRouter);
 app.use("/api/mensagens", mensagensRouter);

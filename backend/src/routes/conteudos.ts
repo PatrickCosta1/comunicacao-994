@@ -129,9 +129,9 @@ router.patch("/:id", async (req: Request, res: Response) => {
   const updates: any = {};
   if (req.body.estado) {
     updates.estado = req.body.estado;
-    if (req.body.estado === "publicado") {
-      updates.published_at = new Date().toISOString();
-    }
+  }
+  if (req.body.estado === "publicado") {
+    updates.published_at = new Date().toISOString();
   }
   if (req.body.title) updates.title = req.body.title;
   if (req.body.descricao !== undefined) updates.descricao = req.body.descricao;

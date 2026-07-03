@@ -5,10 +5,7 @@ import type { Conteudo, Equipa } from "../types";
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
 }
-
-function hojeISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
+function hojeISO() { return new Date().toISOString().split("T")[0]; }
 
 export default function Dashboard() {
   const [conteudos, setConteudos] = useState<Conteudo[]>([]);
@@ -31,14 +28,16 @@ export default function Dashboard() {
   const hoje = hojeISO();
   const hojeDate = new Date();
 
-  // Urgência: itens com data_publicacao passada e não publicados
+  // Urgência: itens com data_publicacao passada e não publicados (excluir feriados passados)
   const atrasados = conteudos.filter(
-    (c) => c.data_publicacao && c.data_publicacao < hoje && c.estado !== "publicado" && c.estado !== "concluido"
+    (c) => c.data_publicacao && c.data_publicacao < hoje && c.estado !== "publicado"
+      && !(c.tipo === "feriado")
   ).sort((a, b) => (a.data_publicacao || "").localeCompare(b.data_publicacao || ""));
 
-  // Vencem hoje
+  // Vencem hoje (excluir feriados)
   const vencemHoje = conteudos.filter(
-    (c) => c.data_publicacao === hoje && c.estado !== "publicado" && c.estado !== "concluido"
+    (c) => c.data_publicacao === hoje && c.estado !== "publicado"
+      && c.tipo !== "feriado"
   );
 
   // Esta semana (inclui vencidos)
@@ -50,7 +49,7 @@ export default function Dashboard() {
   const atvSemana = conteudos.filter((c) => {
     if (!c.date_start) return false;
     const d = new Date(c.date_start);
-    return d >= inicioSemana && d <= fimSemana && c.estado !== "concluido";
+    return d >= inicioSemana && d <= fimSemana && c.estado !== "publicado";
   });
 
   // Cumprimento por equipa (últimos 30 dias)

@@ -201,8 +201,7 @@ function ListaConteudos({ items, onDelete, onEstado }: {
               <select value={c.estado} onChange={(e) => onEstado(c.id, e.target.value)}
                 className="text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-scout-500 outline-none cursor-pointer">
                 <option value="pendente">⏳ Pendente</option>
-                <option value="publicado">✅ Publicado</option>
-                <option value="concluido">✔️ Concluído</option>
+                <option value="publicado">✅ {c.tipo === "atividade" ? "Concluído" : "Publicado"}</option>
               </select>
               <button onClick={() => onDelete(c.id)}
                 className="p-1.5 text-gray-300 hover:text-red-500 transition-colors" title="Apagar">🗑️</button>

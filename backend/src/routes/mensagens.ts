@@ -23,7 +23,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     .eq("tipo", "atividade")
     .lte("date_start", fim)
     .gte("date_end", inicio)
-    .neq("estado", "concluido");
+    .neq("estado", "publicado");
 
   // Juntar sem duplicar
   const seen = new Set<string>();
@@ -46,7 +46,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
 
   // --- Atividades ---
   const atividadesSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "atividade" && c.estado !== "concluido"
+    (c) => c.tipo === "atividade" && c.estado !== "publicado"
   );
   if (atividadesSemana.length > 0) {
     msg += `*📅 Atividades:*\n`;
