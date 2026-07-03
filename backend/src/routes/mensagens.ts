@@ -1,8 +1,19 @@
 import { Router, Request, Response } from "express";
+import nodemailer from "nodemailer";
 import { supabase } from "../lib/supabase";
 import { getSemanaInfo } from "../lib/utils";
 
 const router = Router();
+
+function criarTransporte() {
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS;
+  if (!user || !pass) return null;
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+}
 
 // GET /api/mensagens/semanal - Gerar mensagem semanal
 router.get("/semanal", async (_req: Request, res: Response) => {
@@ -183,6 +194,97 @@ router.get("/historico", async (_req: Request, res: Response) => {
 
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+});
+
+// POST /api/mensagens/enviar-email - Gera mensagem semanal e envia por email
+router.post("/enviar-email", async (_req: Request, res: Response) => {
+  const transport = criarTransporte();
+  if (!transport) {
+    return res.status(400).json({
+      error: "EMAIL_USER e EMAIL_PASS nao definidos no .env",
+      instrucoes: "Cria uma palavra-passe de app no Google e adiciona ao .env: EMAIL_USER=teuemail@gmail.com EMAIL_PASS=passwordapp"
+    });
+  }
+
+  // Reutilizar a logica da mensagem semanal
+  const { inicio, fim } = getSemanaInfo();
+
+  // Fetch data (copied from /semanal logic)
+  const { data: conteudos } = await supabase
+    .from("conteudos")
+    .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
+    .gte("data_publicacao", inicio)
+    .lte("data_publicacao", fim)
+    .order("data_publicacao", { ascending: true });
+
+  const { data: atvExtra } = await supabase
+    .from("conteudos")
+    .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
+    .eq("tipo", "atividade")
+    .lte("date_start", fim)
+    .gte("date_end", inicio)
+    .neq("estado", "publicado");
+
+  const seen = new Set<string>();
+  const todosConteudos = [...(conteudos || []), ...(atvExtra || [])].filter((c) => {
+    if (seen.has(c.id)) return false;
+    seen.add(c.id);
+    return true;
+  });
+
+  // Gerar mensagem (logica simplificada)
+  const dataInicio = new Date(inicio + "T00:00:00");
+  let msg = `Bom dia a todos! 🙌\n\n`;
+  msg += `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
+
+  const atvSemana = todosConteudos.filter((c) => c.tipo === "atividade" && c.estado !== "publicado");
+  if (atvSemana.length > 0) {
+    msg += `📅 Atividades:\n`;
+    for (const c of atvSemana) {
+      msg += `• ${c.title}${c.local ? ` (${c.local})` : ""}\n`;
+      const eqs = (c as any).conteudos_equipas || [];
+      for (const ce of eqs) {
+        const eq = ce.equipas;
+        if (eq?.membros?.length > 0) {
+          msg += `  └ ${eq.nome}: ${eq.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")}\n`;
+        }
+      }
+    }
+    msg += `\n`;
+  }
+
+  const pubsSemana = todosConteudos.filter((c) => c.data_publicacao && c.estado !== "publicado");
+  if (pubsSemana.length > 0) {
+    msg += `📱 Publicacoes da Semana:\n`;
+    for (const c of pubsSemana) {
+      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00").toLocaleDateString("pt-PT") : "";
+      msg += `• ${c.title} — ${d}\n`;
+    }
+    msg += `\n`;
+  }
+
+  msg += `💭 Pensamento da Semana: A equipa de pensamentos trata desta publicacao.\n\n`;
+  msg += `Boa semana a todos! 🚀`;
+
+  // Enviar email
+  const para = process.env.EMAIL_TO || process.env.EMAIL_USER;
+  try {
+    await transport.sendMail({
+      from: process.env.EMAIL_USER,
+      to: para,
+      subject: `📋 Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`,
+      text: msg,
+    });
+
+    await supabase.from("mensagens_semanais").upsert({
+      conteudo: msg,
+      semana_inicio: inicio,
+    }, { onConflict: "semana_inicio" });
+
+    res.json({ success: true, message: "Email enviado com sucesso!", destinatario: para });
+  } catch (err: any) {
+    res.status(500).json({ error: "Erro ao enviar email: " + err.message });
+  }
 });
 
 export default router;
