@@ -272,10 +272,10 @@ router.post("/enviar-email", async (_req: Request, res: Response) => {
   // Enviar email
   const para = process.env.EMAIL_TO || process.env.EMAIL_USER;
   try {
-    await transport.sendMail({
+    const info = await transport.sendMail({
       from: process.env.EMAIL_USER,
       to: para,
-      subject: `📋 Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`,
+      subject: `Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`,
       text: msg,
     });
 
@@ -284,9 +284,14 @@ router.post("/enviar-email", async (_req: Request, res: Response) => {
       semana_inicio: inicio,
     }, { onConflict: "semana_inicio" });
 
-    res.json({ success: true, message: "Email enviado com sucesso!", destinatario: para });
+    res.json({ success: true, message: "Email enviado!", destinatario: para, messageId: info.messageId });
   } catch (err: any) {
-    res.status(500).json({ error: "Erro ao enviar email: " + err.message });
+    console.error("Erro ao enviar email:", err);
+    res.status(500).json({
+      error: "Erro ao enviar email",
+      detalhe: err.message,
+      code: err.code,
+    });
   }
 });
 
