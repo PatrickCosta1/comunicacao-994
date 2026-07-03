@@ -1,21 +1,8 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
+import { getSemanaInfo } from "../lib/utils";
 
 const router = Router();
-
-function getSemanaInfo(): { inicio: string; fim: string } {
-  const hoje = new Date();
-  const dia = hoje.getDay();
-  const diff = dia === 0 ? -6 : 1 - dia; // Segunda-feira
-  const inicio = new Date(hoje);
-  inicio.setDate(hoje.getDate() + diff);
-  const fim = new Date(inicio);
-  fim.setDate(inicio.getDate() + 6);
-  return {
-    inicio: inicio.toISOString().split("T")[0],
-    fim: fim.toISOString().split("T")[0],
-  };
-}
 
 // GET /api/mensagens/semanal - Gerar mensagem semanal
 router.get("/semanal", async (_req: Request, res: Response) => {
@@ -174,10 +161,10 @@ router.get("/semanal", async (_req: Request, res: Response) => {
   }
 
   msg += `*Boa semana a todos!* 🚀`;
-  await supabase.from("mensagens_semanais").insert({
+  await supabase.from("mensagens_semanais").upsert({
     conteudo: msg,
     semana_inicio: inicio,
-  });
+  }, { onConflict: "semana_inicio" });
 
   res.json({
     mensagem: msg,

@@ -217,6 +217,7 @@ function HoraPiedadeModal({ open, onClose, onCreated }: {
 }) {
   const [datas, setDatas] = useState<string[]>([]);
   const [inputDate, setInputDate] = useState("");
+  const [descricao, setDescricao] = useState("Hora de Piedade amanha, domingo as 15h00. Nao faltes!");
   const [gerando, setGerando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
 
@@ -239,7 +240,7 @@ function HoraPiedadeModal({ open, onClose, onCreated }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo: "aviso", title: titulo,
-          descricao: `Hora de Piedade amanha, domingo dia ${new Date(data + "T00:00:00").toLocaleDateString("pt-PT")} as 15h00. Nao faltes!`,
+          descricao: descricao,
           data_acontecimento: data,
         }),
       });
@@ -267,6 +268,11 @@ function HoraPiedadeModal({ open, onClose, onCreated }: {
               className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
             <button onClick={addDate} disabled={!inputDate}
               className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 disabled:opacity-50 transition-colors">+</button>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Mensagem do aviso</label>
+            <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none" />
           </div>
           {datas.length > 0 && (
             <div className="bg-purple-50 rounded-xl p-3">

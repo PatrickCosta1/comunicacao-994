@@ -1,22 +1,8 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
+import { addDays, getNextThursday } from "../lib/utils";
 
 const router = Router();
-
-function addDays(date: string, days: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
-
-function getNextThursday(): string {
-  const hoje = new Date();
-  const dia = hoje.getDay(); // 0=domingo, 4=quinta
-  const diff = dia <= 4 ? 4 - dia : 4 + 7 - dia;
-  const next = new Date(hoje);
-  next.setDate(hoje.getDate() + diff);
-  return next.toISOString().split("T")[0];
-}
 
 // GET /api/conteudos - Listar com filtro opcional por tipo
 router.get("/", async (req: Request, res: Response) => {
@@ -91,19 +77,8 @@ router.post("/", async (req: Request, res: Response) => {
   let equipasIds: string[] = req.body.equipas_ids || [];
 
   if (equipasIds.length === 0) {
-    // Equipas automáticas por tipo
-    const mapaEquipas: Record<string, string[]> = {
-      atividade: [],  // Stories: Fotos+Videos, Pub: Textos - tratado abaixo separadamente
-      video: [],      // Videos team
-      feriado: [],    // Feriados team
-      aviso: [],      // Avisos team
-      quiz: [],       // Quizzes team
-      pensamento: [],  // Pensamentos team
-    };
-
-    // Buscar equipas pelo nome
     const { data: todas } = await supabase.from("equipas").select("id, nome");
-    const eqMap = new Map(todas?.map((e) => [e.nome.replace(/[^\w\s]/g, "").trim().toLowerCase(), e.id]));
+    const eqMap = new Map(todas?.map((e) => [e.nome.toLowerCase(), e.id]));
 
     const matchEquipa = (palavra: string) => {
       for (const [key, id] of eqMap) {
@@ -112,29 +87,15 @@ router.post("/", async (req: Request, res: Response) => {
       return null;
     };
 
-    if (tipo === "video") {
-      const id = matchEquipa("videos");
+    const tiposMapa: Record<string, string[]> = {
+      video: ["videos"], feriado: ["feriados"], aviso: ["avisos"],
+      quiz: ["quizzes"], pensamento: ["pensamentos"],
+      atividade: ["fotos", "videos", "textos"],
+    };
+
+    for (const p of tiposMapa[tipo] || []) {
+      const id = matchEquipa(p);
       if (id) equipasIds.push(id);
-    } else if (tipo === "feriado") {
-      const id = matchEquipa("feriados");
-      if (id) equipasIds.push(id);
-    } else if (tipo === "aviso") {
-      const id = matchEquipa("avisos");
-      if (id) equipasIds.push(id);
-    } else if (tipo === "quiz") {
-      const id = matchEquipa("quizzes");
-      if (id) equipasIds.push(id);
-    } else if (tipo === "pensamento") {
-      const id = matchEquipa("pensamentos");
-      if (id) equipasIds.push(id);
-    } else if (tipo === "atividade") {
-      // Stories: Fotos + Videos; Publicação: Textos
-      const fotosId = matchEquipa("fotos");
-      const videosId = matchEquipa("videos");
-      const textosId = matchEquipa("textos");
-      if (fotosId) equipasIds.push(fotosId);
-      if (videosId) equipasIds.push(videosId);
-      if (textosId) equipasIds.push(textosId);
     }
   }
 

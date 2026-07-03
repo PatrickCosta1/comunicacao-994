@@ -1,13 +1,8 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
+import { addDays } from "../lib/utils";
 
 const router = Router();
-
-function addDays(date: string, days: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
 
 // GET /api/atividades - Listar atividades (com equipas responsáveis)
 router.get("/", async (req: Request, res: Response) => {

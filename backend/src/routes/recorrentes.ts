@@ -1,13 +1,8 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
+import { addDays } from "../lib/utils";
 
 const router = Router();
-
-function addDays(date: string, days: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
 
 // Devolve todos os primeiros domingos entre duas datas
 function getPrimeirosDomingos(inicio: string, fim: string): string[] {
@@ -77,19 +72,17 @@ router.post("/", async (req: Request, res: Response) => {
     const sabado = addDays(domingo, -1);
     const titulo = `⛪ Hora de Piedade - ${new Date(domingo + "T00:00:00").toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`;
 
-    // Verificar se ja existe
     const { data: existentes } = await supabase
       .from("conteudos")
       .select("id")
       .eq("title", titulo)
       .eq("tipo", "aviso");
-
-    if (existentes && existentes.length > 0) continue; // ja existe
+    if (existentes && existentes.length > 0) continue;
 
     const { error: errIns } = await supabase.from("conteudos").insert({
       tipo: "aviso",
       title: titulo,
-      descricao: `Hora de Piedade amanha, domingo as 15h00. Nao faltes!`,
+      descricao: `Hora de Piedade amanha, domingo. Nao faltes!`,
       data_publicacao: sabado,
       data_acontecimento: domingo,
       estado: "pendente",

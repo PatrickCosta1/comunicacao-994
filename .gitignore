@@ -2,6 +2,10 @@ node_modules/
 dist/
 .next/
 .env
+backend/.env
+frontend/.env
+backend/dist/
+frontend/dist/
 *.log
 .DS_Store
 Thumbs.db
