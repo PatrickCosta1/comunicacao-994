@@ -1,46 +1,42 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import sgMail from "@sendgrid/mail";
 
+let resend: Resend | null = null;
 let sendgridReady = false;
 
 export function initEmail() {
-  const key = process.env.SENDGRID_API_KEY;
-  if (key) {
-    sgMail.setApiKey(key);
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) resend = new Resend(resendKey);
+
+  const sgKey = process.env.SENDGRID_API_KEY;
+  if (sgKey) {
+    sgMail.setApiKey(sgKey);
     sendgridReady = true;
   }
 }
 
-function criarTransporteGmail() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: { user, pass },
-    connectionTimeout: 15000,
-  });
-}
-
 export async function enviarEmail(subject: string, text: string): Promise<any> {
-  const from = process.env.EMAIL_FROM || "patrickcosta1605@gmail.com";
-  const to = process.env.EMAIL_TO || from;
+  const from = process.env.EMAIL_FROM || "onboarding@resend.dev";
+  const to = process.env.EMAIL_TO || "patrickcosta1605@gmail.com";
 
-  // 1. Tentar Gmail SMTP porta 465 (SSL)
-  const gmail = criarTransporteGmail();
-  if (gmail) {
+  // 1. Resend (API HTTP, funciona sempre no Render)
+  if (resend) {
     try {
-      const info = await gmail.sendMail({ from, to, subject, text });
-      console.log("Email enviado via Gmail SMTP (porta 465):", info.messageId);
-      return info;
+      const { data, error } = await resend.emails.send({
+        from,
+        to,
+        subject,
+        text,
+      });
+      if (error) throw error;
+      console.log("Email enviado via Resend:", data?.id);
+      return data;
     } catch (err: any) {
-      console.warn("Gmail SMTP falhou, a tentar alternativa:", err.message);
+      console.warn("Resend falhou:", err.message);
     }
   }
 
-  // 2. Tentar SendGrid (API HTTP, funciona sempre no Render)
+  // 2. Tentar SendGrid (fallback)
   if (sendgridReady) {
     try {
       const info = await sgMail.send({ to, from, subject, text });
