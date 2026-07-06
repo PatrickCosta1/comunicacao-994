@@ -5,6 +5,20 @@ import { enviarEmail } from "../lib/email";
 
 const router = Router();
 
+function formatTeams(eqs: any[]): string {
+  if (!eqs?.length) return "";
+  return eqs
+    .filter((ce: any) => ce.equipas)
+    .map((ce: any) => {
+      const eq = ce.equipas;
+      if (eq.membros?.length > 0) {
+        return `${eq.nome}: ${eq.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")}`;
+      }
+      return eq.nome;
+    })
+    .join(" | ");
+}
+
 // GET /api/mensagens/semanal - Gerar mensagem semanal
 router.get("/semanal", async (_req: Request, res: Response) => {
   const { inicio, fim } = getSemanaInfo();
@@ -85,11 +99,9 @@ router.get("/semanal", async (_req: Request, res: Response) => {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• *${c.title}*`;
       if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
-      const eqs = (c as any).conteudos_equipas || [];
-      const eqVid = eqs.find((ce: any) => ce.equipas?.nome?.includes("Videos"));
-      if (eqVid?.equipas?.membros?.length > 0) {
-        msg += ` (${eqVid.equipas.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")})`;
-      }
+      const eqsV = (c as any).conteudos_equipas || [];
+      const teamsV = formatTeams(eqsV);
+      if (teamsV) msg += `\n  └ ${teamsV}`;
       msg += `\n`;
     }
     msg += `\n`;
@@ -105,6 +117,9 @@ router.get("/semanal", async (_req: Request, res: Response) => {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• ${c.title}`;
       if (d) msg += ` - ${d.toLocaleDateString("pt-PT")}`;
+      const eqsF = (c as any).conteudos_equipas || [];
+      const teamsF = formatTeams(eqsF);
+      if (teamsF) msg += `\n  └ ${teamsF}`;
       msg += `\n`;
     }
     msg += `\n`;
@@ -120,6 +135,9 @@ router.get("/semanal", async (_req: Request, res: Response) => {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• ${c.title}`;
       if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
+      const eqsA = (c as any).conteudos_equipas || [];
+      const teamsA = formatTeams(eqsA);
+      if (teamsA) msg += `\n  └ ${teamsA}`;
       msg += `\n`;
     }
     msg += `\n`;
@@ -135,6 +153,9 @@ router.get("/semanal", async (_req: Request, res: Response) => {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• *${c.title}*`;
       if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
+      const eqsQ = (c as any).conteudos_equipas || [];
+      const teamsQ = formatTeams(eqsQ);
+      if (teamsQ) msg += `\n  └ ${teamsQ}`;
       msg += `\n`;
     }
     msg += `\n`;
@@ -145,11 +166,12 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     (c) => c.tipo === "pensamento" && c.estado !== "publicado"
   );
   if (pensamentosSemana.length > 0) {
-    msg += `*💭 Pensamento da Semana:*\n`;
     for (const c of pensamentosSemana) {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      msg += `• "${c.title}"`;
-      if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
+      const dataStr = d ? ` (${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")})` : "";
+      const eqsP = (c as any).conteudos_equipas || [];
+      const teamsP = formatTeams(eqsP);
+      msg += `💭 Pensamento do Fundador${dataStr}: ${teamsP}`;
       msg += `\n`;
     }
     msg += `\n`;
@@ -217,7 +239,7 @@ router.post("/enviar-email", async (_req: Request, res: Response) => {
   // Gerar mensagem (logica simplificada)
   const dataInicio = new Date(inicio + "T00:00:00");
   let msg = `Bom dia a todos! 🙌\n\n`;
-  msg += `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
+  msg += `Relativamente ao plano semanal:\n\n`;
 
   const atvSemana = todosConteudos.filter((c) => c.tipo === "atividade" && c.estado !== "publicado");
   if (atvSemana.length > 0) {
@@ -245,7 +267,19 @@ router.post("/enviar-email", async (_req: Request, res: Response) => {
     msg += `\n`;
   }
 
-  msg += `💭 Pensamento da Semana: A equipa de pensamentos trata desta publicacao.\n\n`;
+  // Pensamentos
+  const pensSemana = todosConteudos.filter((c) => c.tipo === "pensamento" && c.estado !== "publicado");
+  for (const c of pensSemana) {
+    const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
+    const dataStr = d ? ` (${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")})` : "";
+    const eqsP = (c as any).conteudos_equipas || [];
+    const teamsP = eqsP
+      .filter((ce: any) => ce.equipas?.membros?.length > 0)
+      .flatMap((ce: any) => ce.equipas.membros.map((m: any) => m.nome.split(" ")[0]))
+      .join(", ");
+    msg += `💭 Pensamento do Fundador${dataStr}: ${teamsP}\n`;
+  }
+  if (pensSemana.length > 0) msg += `\n`;
   msg += `Boa semana a todos! 🚀`;
 
   // Enviar email
