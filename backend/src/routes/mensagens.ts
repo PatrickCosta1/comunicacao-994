@@ -102,10 +102,16 @@ function renderAtividades(conteudos: any[]): string {
   return bloc;
 }
 
-function renderPensamento(): string {
+function renderPensamento(equipas: any[]): string {
   const thursday = getNextThursday();
   const d = isoDate(thursday);
-  return `💭 Pensamento do Fundador ${dataDDMM(d)}: Publicado todas as quintas\n\n`;
+  const eqPensamentos = (equipas || []).find(
+    (eq) => eq.nome?.toLowerCase().includes("pensamento")
+  );
+  const nomes = eqPensamentos?.membros?.length
+    ? eqPensamentos.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")
+    : "";
+  return `💭 Pensamento do Fundador ${dataDDMM(d)}: ${nomes}\n\n`;
 }
 
 // ─── Geração da mensagem ───────────────────────────────────────
@@ -133,6 +139,11 @@ async function gerarMensagem(inicio: string, fim: string) {
     return true;
   });
 
+  const { data: equipas } = await supabase
+    .from("equipas")
+    .select("*, membros(nome)")
+    .order("created_at");
+
   const dataInicio = isoDate(inicio);
   const cabecalho = `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
   const saida = [
@@ -143,7 +154,7 @@ async function gerarMensagem(inicio: string, fim: string) {
     renderSecao(todosConteudos, { tipo: "feriado", titulo: "Feriados", emoji: "🎉", pubPrefix: false }),
     renderSecao(todosConteudos, { tipo: "aviso", titulo: "Avisos", emoji: "📢" }),
     renderSecao(todosConteudos, { tipo: "quiz", titulo: "Quizzes", emoji: "❓", negrito: true }),
-    renderPensamento(),
+    renderPensamento(equipas || []),
     `Boa semana a todos! 🚀`,
   ];
 
