@@ -19,11 +19,7 @@ function formatTeams(eqs: any[]): string {
     .join(" | ");
 }
 
-// GET /api/mensagens/semanal - Gerar mensagem semanal
-router.get("/semanal", async (_req: Request, res: Response) => {
-  const { inicio, fim } = getSemanaInfo();
-
-  // Buscar conteúdos com publicação esta semana
+async function gerarMensagem(inicio: string, fim: string) {
   const { data: conteudos } = await supabase
     .from("conteudos")
     .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
@@ -31,7 +27,6 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     .lte("data_publicacao", fim)
     .order("data_publicacao", { ascending: true });
 
-  // Também buscar atividades que decorrem esta semana (mesmo sem data_publicacao)
   const { data: atvExtra } = await supabase
     .from("conteudos")
     .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
@@ -40,7 +35,6 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     .gte("date_end", inicio)
     .neq("estado", "publicado");
 
-  // Juntar sem duplicar
   const seen = new Set<string>();
   const todosConteudos = [...(conteudos || []), ...(atvExtra || [])].filter((c) => {
     if (seen.has(c.id)) return false;
@@ -48,23 +42,16 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     return true;
   });
 
-  // Buscar equipas (para membros)
-  const { data: equipas } = await supabase
-    .from("equipas")
-    .select("*, membros(nome)")
-    .order("created_at");
-
-  // Montar mensagem
   const dataInicio = new Date(inicio + "T00:00:00");
-  let msg = `*📋 Plano Semanal - ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}*\n\n`;
-  msg += `*Bom dia a todos!* 🙌\n\nRelativamente ao plano semanal:\n\n`;
+  let msg = `Bom dia a todos! 🙌\n\n`;
+  msg += `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
 
   // --- Atividades ---
   const atividadesSemana = (todosConteudos || []).filter(
     (c) => c.tipo === "atividade" && c.estado !== "publicado"
   );
   if (atividadesSemana.length > 0) {
-    msg += `*📅 Atividades:*\n`;
+    msg += `📅 Atividades:\n`;
     for (const c of atividadesSemana) {
       const d = c.date_start ? new Date(c.date_start + "T00:00:00") : null;
       const dataStr = d ? d.toLocaleDateString("pt-PT", { day: "numeric", month: "short" }) : "";
@@ -94,7 +81,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     (c) => c.tipo === "video" && c.estado !== "publicado"
   );
   if (videosSemana.length > 0) {
-    msg += `*🎥 Vídeos da Semana:*\n`;
+    msg += `🎥 Vídeos da Semana:\n`;
     for (const c of videosSemana) {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• *${c.title}*`;
@@ -112,7 +99,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     (c) => c.tipo === "feriado" && c.estado !== "publicado"
   );
   if (feriadosSemana.length > 0) {
-    msg += `*🎉 Feriados:*\n`;
+    msg += `🎉 Feriados:\n`;
     for (const c of feriadosSemana) {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• ${c.title}`;
@@ -130,7 +117,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     (c) => c.tipo === "aviso" && c.estado !== "publicado"
   );
   if (avisosSemana.length > 0) {
-    msg += `*📢 Avisos:*\n`;
+    msg += `📢 Avisos:\n`;
     for (const c of avisosSemana) {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• ${c.title}`;
@@ -148,7 +135,7 @@ router.get("/semanal", async (_req: Request, res: Response) => {
     (c) => c.tipo === "quiz" && c.estado !== "publicado"
   );
   if (quizzesSemana.length > 0) {
-    msg += `*❓ Quizzes:*\n`;
+    msg += `❓ Quizzes:\n`;
     for (const c of quizzesSemana) {
       const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
       msg += `• *${c.title}*`;
@@ -180,19 +167,27 @@ router.get("/semanal", async (_req: Request, res: Response) => {
   // Fallback se nada
   if (!atividadesSemana.length && !videosSemana.length && !feriadosSemana.length &&
       !avisosSemana.length && !quizzesSemana.length && !pensamentosSemana.length) {
-    msg += `📅 *Agenda:* Nada de especial agendado para esta semana.\n\n`;
+    msg += `📅 Nada de especial agendado para esta semana.\n\n`;
   }
 
-  msg += `*Boa semana a todos!* 🚀`;
+  msg += `Boa semana a todos! 🚀`;
+
   await supabase.from("mensagens_semanais").upsert({
     conteudo: msg,
     semana_inicio: inicio,
   }, { onConflict: "semana_inicio" });
 
+  return { mensagem: msg, conteudos: todosConteudos, dataInicio };
+}
+
+// GET /api/mensagens/semanal - Gerar mensagem semanal
+router.get("/semanal", async (_req: Request, res: Response) => {
+  const { inicio, fim } = getSemanaInfo();
+  const { mensagem, conteudos } = await gerarMensagem(inicio, fim);
   res.json({
-    mensagem: msg,
+    mensagem,
     semana: { inicio, fim },
-    atividades_count: todosConteudos?.length || 0,
+    atividades_count: conteudos?.length || 0,
   });
 });
 
@@ -210,87 +205,12 @@ router.get("/historico", async (_req: Request, res: Response) => {
 
 // POST /api/mensagens/enviar-email - Gera mensagem semanal e envia por email
 router.post("/enviar-email", async (_req: Request, res: Response) => {
-  // Reutilizar a logica da mensagem semanal
   const { inicio, fim } = getSemanaInfo();
+  const { mensagem: msg, dataInicio } = await gerarMensagem(inicio, fim);
 
-  // Fetch data (copied from /semanal logic)
-  const { data: conteudos } = await supabase
-    .from("conteudos")
-    .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
-    .gte("data_publicacao", inicio)
-    .lte("data_publicacao", fim)
-    .order("data_publicacao", { ascending: true });
-
-  const { data: atvExtra } = await supabase
-    .from("conteudos")
-    .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
-    .eq("tipo", "atividade")
-    .lte("date_start", fim)
-    .gte("date_end", inicio)
-    .neq("estado", "publicado");
-
-  const seen = new Set<string>();
-  const todosConteudos = [...(conteudos || []), ...(atvExtra || [])].filter((c) => {
-    if (seen.has(c.id)) return false;
-    seen.add(c.id);
-    return true;
-  });
-
-  // Gerar mensagem (logica simplificada)
-  const dataInicio = new Date(inicio + "T00:00:00");
-  let msg = `Bom dia a todos! 🙌\n\n`;
-  msg += `Relativamente ao plano semanal:\n\n`;
-
-  const atvSemana = todosConteudos.filter((c) => c.tipo === "atividade" && c.estado !== "publicado");
-  if (atvSemana.length > 0) {
-    msg += `📅 Atividades:\n`;
-    for (const c of atvSemana) {
-      msg += `• ${c.title}${c.local ? ` (${c.local})` : ""}\n`;
-      const eqs = (c as any).conteudos_equipas || [];
-      for (const ce of eqs) {
-        const eq = ce.equipas;
-        if (eq?.membros?.length > 0) {
-          msg += `  └ ${eq.nome}: ${eq.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")}\n`;
-        }
-      }
-    }
-    msg += `\n`;
-  }
-
-  const pubsSemana = todosConteudos.filter((c) => c.data_publicacao && c.estado !== "publicado");
-  if (pubsSemana.length > 0) {
-    msg += `📱 Publicacoes da Semana:\n`;
-    for (const c of pubsSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00").toLocaleDateString("pt-PT") : "";
-      msg += `• ${c.title} — ${d}\n`;
-    }
-    msg += `\n`;
-  }
-
-  // Pensamentos
-  const pensSemana = todosConteudos.filter((c) => c.tipo === "pensamento" && c.estado !== "publicado");
-  for (const c of pensSemana) {
-    const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-    const dataStr = d ? ` (${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")})` : "";
-    const eqsP = (c as any).conteudos_equipas || [];
-    const teamsP = eqsP
-      .filter((ce: any) => ce.equipas?.membros?.length > 0)
-      .flatMap((ce: any) => ce.equipas.membros.map((m: any) => m.nome.split(" ")[0]))
-      .join(", ");
-    msg += `💭 Pensamento do Fundador${dataStr}: ${teamsP}\n`;
-  }
-  if (pensSemana.length > 0) msg += `\n`;
-  msg += `Boa semana a todos! 🚀`;
-
-  // Enviar email
   const subject = `Plano Semanal 994-Caxinas — ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}`;
   try {
     const info = await enviarEmail(subject, msg);
-
-    await supabase.from("mensagens_semanais").upsert({
-      conteudo: msg,
-      semana_inicio: inicio,
-    }, { onConflict: "semana_inicio" });
 
     res.json({ success: true, message: "Email enviado!", destinatario: process.env.EMAIL_TO || "patrickcosta1605@gmail.com", messageId: info.messageId });
   } catch (err: any) {
