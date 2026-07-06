@@ -14,12 +14,10 @@ app.use(express.json());
 import equipasRouter from "./routes/equipas";
 import conteudosRouter from "./routes/conteudos";
 import mensagensRouter from "./routes/mensagens";
-import sugestoesRouter from "./routes/sugestoes";
 
 app.use("/api/equipas", equipasRouter);
 app.use("/api/conteudos", conteudosRouter);
 app.use("/api/mensagens", mensagensRouter);
-app.use("/api/sugestoes", sugestoesRouter);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", version: "2" });

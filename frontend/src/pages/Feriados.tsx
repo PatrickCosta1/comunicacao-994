@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { useToast } from "../components/Toast";
 import type { Conteudo } from "../types";
 
 export default function Feriados() {
@@ -8,6 +9,7 @@ export default function Feriados() {
   const [mesFiltro, setMesFiltro] = useState<number | "todos">("todos");
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const { toast } = useToast();
   const [editando, setEditando] = useState<Conteudo | null>(null);
   const [erro, setErro] = useState("");
 
@@ -57,37 +59,52 @@ export default function Feriados() {
       data_publicacao: dataPub,
     };
 
-    if (editando) {
-      await fetch(`/api/conteudos/${editando.id}`, {
+    try {
+      if (editando) {
+        await fetch(`/api/conteudos/${editando.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        toast({ tipo: "success", titulo: `✏️ "${title.trim()}" atualizado` });
+      } else {
+        await fetch("/api/conteudos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        toast({ tipo: "success", titulo: `🎉 "${title.trim()}" criado` });
+      }
+      setShowModal(false);
+      fetchFeriados();
+    } catch {
+      toast({ tipo: "error", titulo: "Erro ao guardar feriado" });
+    }
+  };
+
+  const handleDelete = async (id: string, titulo: string) => {
+    if (!confirm(`Remover "${titulo}"?`)) return;
+    try {
+      await fetch(`/api/conteudos/${id}`, { method: "DELETE" });
+      toast({ tipo: "success", titulo: `🗑️ "${titulo}" removido` });
+      fetchFeriados();
+    } catch {
+      toast({ tipo: "error", titulo: "Erro ao remover feriado" });
+    }
+  };
+
+  const handleEstado = async (id: string, estado: string, titulo: string) => {
+    try {
+      await fetch(`/api/conteudos/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ estado }),
       });
-    } else {
-      await fetch("/api/conteudos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      toast({ tipo: "success", titulo: estado === "publicado" ? `✅ "${titulo}" publicado` : `⏳ "${titulo}" pendente` });
+      fetchFeriados();
+    } catch {
+      toast({ tipo: "error", titulo: "Erro ao atualizar feriado" });
     }
-
-    setShowModal(false);
-    fetchFeriados();
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Remover este feriado?")) return;
-    await fetch(`/api/conteudos/${id}`, { method: "DELETE" });
-    fetchFeriados();
-  };
-
-  const handleEstado = async (id: string, estado: string) => {
-    await fetch(`/api/conteudos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado }),
-    });
-    fetchFeriados();
   };
 
   const meses = [
@@ -204,7 +221,7 @@ export default function Feriados() {
                   <div className="flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => openEdit(f)}
                       className="p-1.5 text-gray-300 hover:text-scout-600 transition-colors" title="Editar">✏️</button>
-                    <button onClick={() => handleDelete(f.id)}
+                    <button onClick={() => handleDelete(f.id, f.title)}
                       className="p-1.5 text-gray-300 hover:text-red-500 transition-colors" title="Remover">🗑️</button>
                   </div>
                 </div>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import { ToastProvider } from "./components/Toast";
+import QuickFab from "./components/QuickFab";
 import Dashboard from "./pages/Dashboard";
 import Conteudos from "./pages/Conteudos";
 import Feriados from "./pages/Feriados";
@@ -71,6 +73,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ToastProvider>
       <div className="flex h-screen overflow-hidden bg-gray-50">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
@@ -98,6 +101,8 @@ export default function App() {
           </div>
         </main>
       </div>
+      <QuickFab />
+      </ToastProvider>
     </BrowserRouter>
   );
 }
