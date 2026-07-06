@@ -23,7 +23,7 @@ export interface Conteudo {
   seccoes: string[];
   data_publicacao: string | null;
   data_acontecimento: string | null;
-  estado: "pendente" | "publicado" | "concluido";
+  estado: "pendente" | "publicado";
   equipas_responsaveis: { id: string; nome: string }[];
   published_at: string | null;
   created_at: string;

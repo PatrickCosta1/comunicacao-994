@@ -33,6 +33,8 @@ export default function Conteudos() {
   const [equipas, setEquipas] = useState<Equipa[]>([]);
   const [activeTab, setActiveTab] = useState<TipoConteudo>("atividade");
   const [showModal, setShowModal] = useState<string | false>(false);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
     fetchConteudos();
@@ -42,12 +44,16 @@ export default function Conteudos() {
   }, []);
 
   const fetchConteudos = async () => {
-    const { data } = await supabase
+    setLoading(true);
+    setErro("");
+    const { data, error } = await supabase
       .from("conteudos")
       .select("*, conteudos_equipas(equipa_id, equipas(id, nome))")
       .order("created_at", { ascending: false });
 
-    if (data) {
+    if (error) {
+      setErro("Erro ao carregar conteúdos: " + error.message);
+    } else if (data) {
       const formatted = data.map((c: any) => ({
         ...c,
         equipas_responsaveis: c.conteudos_equipas?.map((ce: any) => ({
@@ -58,6 +64,7 @@ export default function Conteudos() {
       }));
       setConteudos(formatted);
     }
+    setLoading(false);
   };
 
   const filtered = conteudos.filter((c) => c.tipo === activeTab);
@@ -115,8 +122,13 @@ export default function Conteudos() {
         ))}
       </div>
 
-      {/* Avisos tem UI especial com modais */}
-      {activeTab === "aviso" ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <p className="text-gray-400">⏳ A carregar...</p>
+        </div>
+      ) : erro ? (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">{erro}</div>
+      ) : activeTab === "aviso" ? (
         <>
           <HoraPiedadeModal
             open={showModal === "hora_piedade"}

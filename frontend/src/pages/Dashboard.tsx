@@ -15,7 +15,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const [ctRes, eqRes] = await Promise.all([
-        supabase.from("conteudos").select("*").order("created_at", { ascending: false }),
+        supabase.from("conteudos").select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))").order("created_at", { ascending: false }),
         supabase.from("equipas").select("*, membros(*)").order("created_at"),
       ]);
       if (ctRes.data) setConteudos(ctRes.data);

@@ -6,9 +6,11 @@ export default function Mensagens() {
   const [mensagem, setMensagem] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const gerarSemanal = async () => {
     setLoading(true);
+    setEmailStatus(null);
     try {
       const res = await fetch(`${API}/mensagens/semanal`);
       const data = await res.json();
@@ -17,6 +19,21 @@ export default function Mensagens() {
       setMensagem("Erro ao gerar mensagem. Verifica se o backend está a correr.");
     }
     setLoading(false);
+  };
+
+  const enviarEmail = async () => {
+    setEmailStatus(null);
+    try {
+      const res = await fetch(`${API}/mensagens/enviar-email`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setEmailStatus({ ok: true, msg: "✅ Email enviado com sucesso!" });
+      } else {
+        setEmailStatus({ ok: false, msg: `❌ ${data.error || "Erro desconhecido"}` });
+      }
+    } catch {
+      setEmailStatus({ ok: false, msg: "❌ Erro de ligação ao servidor." });
+    }
   };
 
   const copyToClipboard = async () => {
@@ -33,7 +50,7 @@ export default function Mensagens() {
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">💬 Mensagens</h1>
-        <p className="text-gray-500 mt-1">Gera a mensagem semanal para o grupo de WhatsApp.</p>
+        <p className="text-gray-500 mt-1">Gera a mensagem semanal e envia por email.</p>
       </div>
 
       {/* Gerar Mensagem Semanal */}
@@ -66,12 +83,33 @@ export default function Mensagens() {
           <pre className="bg-gray-50 rounded-lg p-4 text-sm whitespace-pre-wrap font-sans text-gray-700 border border-gray-100">
             {mensagem}
           </pre>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={enviarEmail}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              📧 Enviar Email Agora
+            </button>
+            <button
+              onClick={gerarSemanal}
+              className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+            >
+              🔄 Regenerar
+            </button>
+          </div>
+
+          {emailStatus && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${emailStatus.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+              {emailStatus.msg}
+            </div>
+          )}
         </div>
       )}
 
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
         <p className="text-sm text-amber-700">
-          💡 Cola esta mensagem no grupo principal do WhatsApp à segunda-feira de manhã.
+          💡 O email é enviado automaticamente à segunda-feira às 8h (cronjob). Podes também enviar manualmente aqui.
         </p>
       </div>
     </div>

@@ -9,6 +9,7 @@ export default function Feriados() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState<Conteudo | null>(null);
+  const [erro, setErro] = useState("");
 
   // Form
   const [title, setTitle] = useState("");
@@ -20,12 +21,14 @@ export default function Feriados() {
   }, []);
 
   const fetchFeriados = async () => {
-    const { data } = await supabase
+    setErro("");
+    const { data, error } = await supabase
       .from("conteudos")
       .select("*")
       .eq("tipo", "feriado")
       .order("data_publicacao", { ascending: true });
-    if (data) setFeriados(data);
+    if (error) setErro("Erro ao carregar feriados: " + error.message);
+    else if (data) setFeriados(data);
     setLoading(false);
   };
 
@@ -102,7 +105,8 @@ export default function Feriados() {
     return true;
   });
 
-  if (loading) return <div className="flex items-center justify-center h-64"><p className="text-gray-400">A carregar...</p></div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><p className="text-gray-400">⏳ A carregar...</p></div>;
+  if (erro) return <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-600">{erro}</div>;
 
   return (
     <div className="max-w-4xl space-y-6">
