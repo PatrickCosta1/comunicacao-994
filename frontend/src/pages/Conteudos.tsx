@@ -152,7 +152,7 @@ export default function Conteudos() {
             onCreated={fetchConteudos}
             equipas={equipas}
           />
-          <ListaConteudos items={filtered} onDelete={handleDelete} onEstado={handleEstado} />
+          <ListaConteudos items={filtered} onDelete={handleDelete} onEstado={handleEstado} onRefresh={fetchConteudos} />
         </>
       )}
     </div>
@@ -160,11 +160,41 @@ export default function Conteudos() {
 }
 
 // ===== Lista de conteudos =====
-function ListaConteudos({ items, onDelete, onEstado }: {
+function ListaConteudos({ items, onDelete, onEstado, onRefresh }: {
   items: Conteudo[];
   onDelete: (id: string) => void;
   onEstado: (id: string, estado: string) => void;
+  onRefresh: () => void;
 }) {
+  const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [publicando, setPublicando] = useState(false);
+
+  const hoje = new Date().toISOString().split("T")[0];
+
+  const toggle = (id: string) => {
+    setSelecionados((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+
+  const publicarSelecionados = async () => {
+    setPublicando(true);
+    for (const id of selecionados) {
+      await fetch(`/api/conteudos/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "publicado" }),
+      });
+    }
+    setSelecionados([]);
+    setPublicando(false);
+    onRefresh();
+  };
+
+  const selecionarAtrasados = () => {
+    const atrasados = items.filter(
+      (c) => c.data_publicacao && c.data_publicacao < hoje && c.estado !== "publicado"
+    ).map((c) => c.id);
+    setSelecionados(atrasados);
+  };
+
   if (items.length === 0) {
     return (
       <div className="bg-white/50 rounded-2xl border-2 border-dashed border-gray-200 p-16 text-center">
@@ -175,10 +205,48 @@ function ListaConteudos({ items, onDelete, onEstado }: {
     );
   }
 
+  // Barra de ações em massa
+  const actionBar = selecionados.length > 0 && (
+    <div className="sticky top-0 z-20 -mx-1 px-1">
+      <div className="bg-gradient-to-r from-scout-600 to-scout-500 rounded-xl px-4 py-3 shadow-lg flex items-center justify-between animate-slide-up">
+        <span className="text-sm font-medium text-white">{selecionados.length} selecionado{selecionados.length > 1 ? "s" : ""}</span>
+        <div className="flex gap-2">
+          <button onClick={publicarSelecionados} disabled={publicando}
+            className="px-4 py-1.5 bg-white text-scout-700 rounded-lg text-xs font-semibold hover:bg-scout-50 transition-colors disabled:opacity-50">
+            {publicando ? "⏳..." : "✅ Publicar todos"}
+          </button>
+          <button onClick={() => setSelecionados([])}
+            className="px-3 py-1.5 text-white/80 hover:text-white text-xs transition-colors">
+            ✕ Limpar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-3">
-      {items.map((c) => (
-        <div key={c.id} className="group bg-white border border-gray-100 rounded-xl p-4 hover:border-gray-200 hover:shadow-md transition-all duration-200">
+      {/* Ações rápidas */}
+      <div className="flex gap-2 items-center text-xs text-gray-400">
+        <button onClick={selecionarAtrasados} className="hover:text-red-500 transition-colors">🔴 Selecionar atrasados</button>
+        <span>|</span>
+        <span>{items.length} item{items.length > 1 ? "ns" : ""}</span>
+      </div>
+
+      {actionBar}
+
+      {items.map((c) => {
+        const atrasado = c.data_publicacao && c.data_publicacao < hoje && c.estado !== "publicado" && c.tipo !== "feriado";
+        return (
+        <div key={c.id} className={`group bg-white border rounded-xl p-4 transition-all duration-200 ${atrasado ? "border-red-200 bg-red-50/30" : "border-gray-100 hover:border-gray-200 hover:shadow-md"}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              {/* Checkbox */}
+              <label className={`mt-1 w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-colors shrink-0 ${selecionados.includes(c.id) ? "bg-scout-600 border-scout-600" : "border-gray-300 hover:border-scout-400"}`}>
+                <input type="checkbox" checked={selecionados.includes(c.id)} onChange={() => toggle(c.id)} className="sr-only" />
+                {selecionados.includes(c.id) && <span className="text-white text-xs">✓</span>}
+              </label>
+              <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
@@ -210,6 +278,12 @@ function ListaConteudos({ items, onDelete, onEstado }: {
               {c.descricao && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{c.descricao}</p>}
             </div>
             <div className="flex items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+              {atrasado && (
+                <button onClick={() => onEstado(c.id, "publicado")}
+                  className="px-2 py-1.5 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors">
+                  ✅ Publicar
+                </button>
+              )}
               <select value={c.estado} onChange={(e) => onEstado(c.id, e.target.value)}
                 className="text-[11px] border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-scout-500 outline-none cursor-pointer">
                 <option value="pendente">⏳ Pendente</option>
@@ -219,7 +293,13 @@ function ListaConteudos({ items, onDelete, onEstado }: {
                 className="p-1.5 text-gray-300 hover:text-red-500 transition-colors" title="Apagar">🗑️</button>
             </div>
           </div>
-        </div>
+          {atrasado && (
+            <div className="flex items-center gap-2 mt-2 text-[11px]">
+              <span className="text-red-500 font-medium">🔴 {Math.ceil((new Date(hoje).getTime() - new Date(c.data_publicacao!).getTime()) / (1000*60*60*24))} dias atrasado</span>
+              <button onClick={() => onEstado(c.id, "publicado")}
+                className="text-red-600 hover:text-red-700 underline">Marcar como publicado</button>
+            </div>
+          )}
       ))}
     </div>
   );

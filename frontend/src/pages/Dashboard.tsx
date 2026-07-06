@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import type { Conteudo, Equipa } from "../types";
+import SugestoesPanel from "../components/SugestoesPanel";
 
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
@@ -78,6 +79,11 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Sugestões Inteligentes */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 shadow-sm">
+        <SugestoesPanel />
+      </div>
+
       <div className="flex items-center gap-3">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📊 Dashboard</h1>
         {atrasados.length > 0 && (
