@@ -1,9 +1,15 @@
 import { Router, Request, Response } from "express";
 import { supabase } from "../lib/supabase";
-import { getSemanaInfo } from "../lib/utils";
+import { getSemanaInfo, getNextThursday } from "../lib/utils";
 import { enviarEmail } from "../lib/email";
 
 const router = Router();
+
+// ─── Helpers ────────────────────────────────────────────────────
+
+function isoDate(d: string) {
+  return new Date(d + "T00:00:00");
+}
 
 function formatTeams(eqs: any[]): string {
   if (!eqs?.length) return "";
@@ -18,6 +24,91 @@ function formatTeams(eqs: any[]): string {
     })
     .join(" | ");
 }
+
+function teamsLine(conteudo: any): string {
+  const t = formatTeams((conteudo as any).conteudos_equipas || []);
+  return t ? `\n  └ ${t}` : "";
+}
+
+function ptDate(d: Date): string {
+  return d.toLocaleDateString("pt-PT");
+}
+
+function dataDDMM(d: Date): string {
+  return `(${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1).toString().padStart(2, "0")})`;
+}
+
+interface SecaoConfig {
+  tipo: string;
+  titulo: string;
+  emoji: string;
+  /** mostra "publicar" antes da data */
+  pubPrefix?: boolean;
+  /** usar date_start em vez de data_publicacao */
+  usarDateStart?: boolean;
+  /** negrito no título do item */
+  negrito?: boolean;
+}
+
+function renderSecao(conteudos: any[], cfg: SecaoConfig): string {
+  const items = (conteudos || []).filter(
+    (c) => c.tipo === cfg.tipo && c.estado !== "publicado"
+  );
+  if (!items.length) return "";
+
+  let bloc = `${cfg.emoji} ${cfg.titulo}:\n`;
+  for (const c of items) {
+    const d = cfg.usarDateStart && c.date_start ? isoDate(c.date_start) : c.data_publicacao ? isoDate(c.data_publicacao) : null;
+    const tit = cfg.negrito ? `*${c.title}*` : c.title;
+
+    let linha = `• ${tit}`;
+    if (d) linha += cfg.pubPrefix !== false ? ` - publicar ${ptDate(d)}` : ` - ${ptDate(d)}`;
+    if (c.local && cfg.usarDateStart) linha += ` (${c.local})`;
+    linha += teamsLine(c);
+    linha += `\n`;
+    bloc += linha;
+  }
+  return bloc + `\n`;
+}
+
+function renderAtividades(conteudos: any[]): string {
+  const items = (conteudos || []).filter(
+    (c) => c.tipo === "atividade" && c.estado !== "publicado"
+  );
+  if (!items.length) return "";
+
+  let bloc = `📅 Atividades:\n`;
+  for (const c of items) {
+    const d = c.date_start ? isoDate(c.date_start) : null;
+    const dataStr = d ? ptDate(d) : "";
+    bloc += `• *${c.title}* - ${dataStr}`;
+    if (c.local) bloc += ` (${c.local})`;
+    bloc += `\n`;
+
+    const eqs = (c as any).conteudos_equipas || [];
+    for (const ce of eqs) {
+      const eq = ce.equipas;
+      if (eq?.membros?.length > 0) {
+        bloc += `  └ ${eq.nome}: ${eq.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")}\n`;
+      } else if (eq) {
+        bloc += `  └ ${eq.nome}\n`;
+      }
+    }
+    if (c.data_publicacao) {
+      bloc += `  └ 📱 Publicação até ${ptDate(isoDate(c.data_publicacao))}\n`;
+    }
+    bloc += `\n`;
+  }
+  return bloc;
+}
+
+function renderPensamento(): string {
+  const thursday = getNextThursday();
+  const d = isoDate(thursday);
+  return `💭 Pensamento do Fundador ${dataDDMM(d)}: Publicado todas as quintas\n\n`;
+}
+
+// ─── Geração da mensagem ───────────────────────────────────────
 
 async function gerarMensagem(inicio: string, fim: string) {
   const { data: conteudos } = await supabase
@@ -42,135 +133,21 @@ async function gerarMensagem(inicio: string, fim: string) {
     return true;
   });
 
-  const dataInicio = new Date(inicio + "T00:00:00");
-  let msg = `Bom dia a todos! 🙌\n\n`;
-  msg += `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
+  const dataInicio = isoDate(inicio);
+  const cabecalho = `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
+  const saida = [
+    `Bom dia a todos! 🙌\n\n`,
+    cabecalho,
+    renderAtividades(todosConteudos),
+    renderSecao(todosConteudos, { tipo: "video", titulo: "Vídeos da Semana", emoji: "🎥", negrito: true }),
+    renderSecao(todosConteudos, { tipo: "feriado", titulo: "Feriados", emoji: "🎉", pubPrefix: false }),
+    renderSecao(todosConteudos, { tipo: "aviso", titulo: "Avisos", emoji: "📢" }),
+    renderSecao(todosConteudos, { tipo: "quiz", titulo: "Quizzes", emoji: "❓", negrito: true }),
+    renderPensamento(),
+    `Boa semana a todos! 🚀`,
+  ];
 
-  // --- Atividades ---
-  const atividadesSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "atividade" && c.estado !== "publicado"
-  );
-  if (atividadesSemana.length > 0) {
-    msg += `📅 Atividades:\n`;
-    for (const c of atividadesSemana) {
-      const d = c.date_start ? new Date(c.date_start + "T00:00:00") : null;
-      const dataStr = d ? d.toLocaleDateString("pt-PT", { day: "numeric", month: "short" }) : "";
-      msg += `• *${c.title}* - ${dataStr}`;
-      if (c.local) msg += ` (${c.local})`;
-      msg += `\n`;
-
-      const eqs = (c as any).conteudos_equipas || [];
-      for (const ce of eqs) {
-        const eq = ce.equipas;
-        if (eq?.membros?.length > 0) {
-          const nomes = eq.membros.map((m: any) => m.nome.split(" ")[0]).join(", ");
-          msg += `  └ ${eq.nome}: ${nomes}\n`;
-        } else if (eq) {
-          msg += `  └ ${eq.nome}\n`;
-        }
-      }
-      if (c.data_publicacao) {
-        msg += `  └ 📱 Publicação até ${new Date(c.data_publicacao + "T00:00:00").toLocaleDateString("pt-PT")}\n`;
-      }
-      msg += `\n`;
-    }
-  }
-
-  // --- Vídeos ---
-  const videosSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "video" && c.estado !== "publicado"
-  );
-  if (videosSemana.length > 0) {
-    msg += `🎥 Vídeos da Semana:\n`;
-    for (const c of videosSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      msg += `• *${c.title}*`;
-      if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
-      const eqsV = (c as any).conteudos_equipas || [];
-      const teamsV = formatTeams(eqsV);
-      if (teamsV) msg += `\n  └ ${teamsV}`;
-      msg += `\n`;
-    }
-    msg += `\n`;
-  }
-
-  // --- Feriados ---
-  const feriadosSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "feriado" && c.estado !== "publicado"
-  );
-  if (feriadosSemana.length > 0) {
-    msg += `🎉 Feriados:\n`;
-    for (const c of feriadosSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      msg += `• ${c.title}`;
-      if (d) msg += ` - ${d.toLocaleDateString("pt-PT")}`;
-      const eqsF = (c as any).conteudos_equipas || [];
-      const teamsF = formatTeams(eqsF);
-      if (teamsF) msg += `\n  └ ${teamsF}`;
-      msg += `\n`;
-    }
-    msg += `\n`;
-  }
-
-  // --- Avisos ---
-  const avisosSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "aviso" && c.estado !== "publicado"
-  );
-  if (avisosSemana.length > 0) {
-    msg += `📢 Avisos:\n`;
-    for (const c of avisosSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      msg += `• ${c.title}`;
-      if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
-      const eqsA = (c as any).conteudos_equipas || [];
-      const teamsA = formatTeams(eqsA);
-      if (teamsA) msg += `\n  └ ${teamsA}`;
-      msg += `\n`;
-    }
-    msg += `\n`;
-  }
-
-  // --- Quizzes ---
-  const quizzesSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "quiz" && c.estado !== "publicado"
-  );
-  if (quizzesSemana.length > 0) {
-    msg += `❓ Quizzes:\n`;
-    for (const c of quizzesSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      msg += `• *${c.title}*`;
-      if (d) msg += ` - publicar ${d.toLocaleDateString("pt-PT")}`;
-      const eqsQ = (c as any).conteudos_equipas || [];
-      const teamsQ = formatTeams(eqsQ);
-      if (teamsQ) msg += `\n  └ ${teamsQ}`;
-      msg += `\n`;
-    }
-    msg += `\n`;
-  }
-
-  // --- Pensamentos ---
-  const pensamentosSemana = (todosConteudos || []).filter(
-    (c) => c.tipo === "pensamento" && c.estado !== "publicado"
-  );
-  if (pensamentosSemana.length > 0) {
-    for (const c of pensamentosSemana) {
-      const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
-      const dataStr = d ? ` (${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")})` : "";
-      const eqsP = (c as any).conteudos_equipas || [];
-      const teamsP = formatTeams(eqsP);
-      msg += `💭 Pensamento do Fundador${dataStr}: ${teamsP}`;
-      msg += `\n`;
-    }
-    msg += `\n`;
-  }
-
-  // Fallback se nada
-  if (!atividadesSemana.length && !videosSemana.length && !feriadosSemana.length &&
-      !avisosSemana.length && !quizzesSemana.length && !pensamentosSemana.length) {
-    msg += `📅 Nada de especial agendado para esta semana.\n\n`;
-  }
-
-  msg += `Boa semana a todos! 🚀`;
+  const msg = saida.join("");
 
   await supabase.from("mensagens_semanais").upsert({
     conteudo: msg,
