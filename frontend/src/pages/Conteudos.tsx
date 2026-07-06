@@ -300,6 +300,7 @@ function ListaConteudos({ items, onDelete, onEstado, onRefresh }: {
                 className="text-red-600 hover:text-red-700 underline">Marcar como publicado</button>
             </div>
           )}
+        </div>
       ))}
     </div>
   );
