@@ -2,14 +2,10 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/Toast";
 import SuggestionBanner from "../components/SuggestionBanner";
+import { hojeISO, daysBetween } from "../lib/utils";
 import type { Conteudo, Equipa } from "../types";
 
 const API = "/api";
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.floor((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
-}
-function hojeISO() { return new Date().toISOString().split("T")[0]; }
 
 export default function Dashboard() {
   const [conteudos, setConteudos] = useState<Conteudo[]>([]);
@@ -96,6 +92,18 @@ export default function Dashboard() {
     (c) => c.estado === "publicado" && c.data_publicacao && c.published_at &&
       new Date(c.published_at) <= new Date(c.data_publicacao + "T23:59:59")
   ).length;
+
+  // Próximos 7 dias
+  const fim7 = new Date(hojeDate);
+  fim7.setDate(fim7.getDate() + 7);
+  const proximos7 = conteudos
+    .filter((c) => {
+      if (c.estado === "publicado") return false;
+      if (!c.data_publicacao) return false;
+      const d = new Date(c.data_publicacao + "T00:00:00");
+      return d >= hojeDate && d <= fim7;
+    })
+    .sort((a, b) => (a.data_publicacao || "").localeCompare(b.data_publicacao || ""));
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><p className="text-gray-400">⏳ A carregar...</p></div>;
@@ -211,6 +219,31 @@ export default function Dashboard() {
                 <span className="shrink-0 text-xs font-bold px-3 py-1 bg-amber-200 text-amber-700 rounded-full animate-pulse-soft">Hoje!</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Próximos 7 dias — publicações e feriados */}
+      {proximos7.length > 0 && (
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-blue-200 p-4 sm:p-5">
+          <h2 className="text-sm sm:text-base font-semibold text-blue-700 mb-3">📅 Próximos 7 Dias</h2>
+          <div className="divide-y divide-blue-50">
+            {proximos7.map((c) => {
+              const d = c.data_publicacao ? new Date(c.data_publicacao + "T00:00:00") : null;
+              const hojeData = new Date();
+              const diff = d ? Math.ceil((d.getTime() - hojeData.getTime()) / (1000*60*60*24)) : 0;
+              return (
+                <div key={c.id} className="flex items-center gap-3 py-2.5">
+                  <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${diff <= 1 ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-600"}`}>
+                    {diff === 0 ? "Hoje" : diff === 1 ? "Amanhã" : `${d?.toLocaleDateString("pt-PT", { weekday: "short" })}`}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700 truncate">{c.title}</p>
+                    <p className="text-xs text-gray-400">{c.tipo === "feriado" ? "🎉 Feriado" : `📱 Publicar ${d?.toLocaleDateString("pt-PT")}`}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

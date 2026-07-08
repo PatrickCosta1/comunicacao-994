@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/Toast";
+import { getNextThursday } from "../lib/utils";
 import type { Conteudo, TipoConteudo, Equipa } from "../types";
 
 const API = "/api";
@@ -15,15 +16,6 @@ const TABS: { tipo: TipoConteudo; label: string; icon: string; btnLabel: string 
 ];
 
 const SECCOES = ["Lobitos", "Exploradores", "Pioneiros", "Caminheiros", "Agrupamento"];
-
-function getNextThursday(): string {
-  const hoje = new Date();
-  const dia = hoje.getDay();
-  const diff = dia <= 4 ? 4 - dia : 4 + 7 - dia;
-  const next = new Date(hoje);
-  next.setDate(hoje.getDate() + diff);
-  return next.toISOString().split("T")[0];
-}
 
 function getTituloPorTipo(tipo: TipoConteudo): string {
   const t = TABS.find((t) => t.tipo === tipo);
