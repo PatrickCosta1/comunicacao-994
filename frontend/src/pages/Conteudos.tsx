@@ -178,6 +178,68 @@ export default function Conteudos() {
   );
 }
 
+// ===== Notas inline =====
+function NotasField({ conteudoId, valor, onSave }: { conteudoId: string; valor: string; onSave: () => void }) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(valor);
+  const [aGuardar, setAGuardar] = useState(false);
+
+  const guardar = async () => {
+    setAGuardar(true);
+    try {
+      await fetch(`/api/conteudos/${conteudoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notas: texto || null }),
+      });
+      setEditando(false);
+      onSave();
+    } catch {}
+    setAGuardar(false);
+  };
+
+  if (!editando && !texto) {
+    return (
+      <button
+        onClick={() => { setEditando(true); setTexto(valor); }}
+        className="text-[11px] text-gray-300 hover:text-gray-500 transition-colors mt-1.5"
+      >
+        📝 Adicionar nota
+      </button>
+    );
+  }
+
+  if (!editando && texto) {
+    return (
+      <div className="mt-1.5 flex items-start gap-2">
+        <p className="text-[11px] text-gray-500 italic flex-1">📝 {texto}</p>
+        <button onClick={() => setEditando(true)} className="text-[11px] text-gray-300 hover:text-gray-500 shrink-0">✏️</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex items-start gap-2">
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={2}
+        placeholder="Ex: ja falei com a equipa, vao publicar hoje"
+        className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:ring-2 focus:ring-scout-400 focus:border-scout-400 outline-none"
+        autoFocus
+      />
+      <div className="flex gap-1 shrink-0 pt-0.5">
+        <button onClick={guardar} disabled={aGuardar} className="px-2 py-1 text-xs bg-scout-600 text-white rounded-lg hover:bg-scout-700 disabled:opacity-50">
+          {aGuardar ? "..." : "💾"}
+        </button>
+        <button onClick={() => { setEditando(false); setTexto(valor); }} className="px-2 py-1 text-xs text-gray-400 hover:text-gray-600">
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ===== Lista de conteudos =====
 function ListaConteudos({ items, onDelete, onEstado }: {
   items: Conteudo[];
@@ -225,6 +287,9 @@ function ListaConteudos({ items, onDelete, onEstado }: {
                     <span key={e.id} className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded-full border border-gray-100">{e.nome}</span>
                   ))}
                 </div>
+              )}
+              {c.estado !== "publicado" && (
+                <NotasField conteudoId={c.id} valor={c.notas || ""} onSave={() => fetchConteudos()} />
               )}
               {c.descricao && <p className="text-xs text-gray-500 mt-2 leading-relaxed">{c.descricao}</p>}
             </div>

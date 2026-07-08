@@ -136,6 +136,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
   if (req.body.title) updates.title = req.body.title;
   if (req.body.descricao !== undefined) updates.descricao = req.body.descricao;
   if (req.body.data_publicacao) updates.data_publicacao = req.body.data_publicacao;
+  if (req.body.notas !== undefined) updates.notas = req.body.notas;
 
   const { data, error } = await supabase
     .from("conteudos")

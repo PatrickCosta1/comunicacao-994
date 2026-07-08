@@ -165,7 +165,7 @@ export default function Dashboard() {
                   <button
                     onClick={() => marcarPublicado(c.id, c.title)}
                     disabled={publicando === c.id}
-                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-200 text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-300 hover:text-red-700 transition-all disabled:opacity-50 text-sm"
+                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-red-200 text-red-600 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:opacity-100 hover:bg-red-300 hover:text-red-700 transition-all disabled:opacity-50 text-sm"
                     title="Marcar como publicado"
                   >
                     {publicando === c.id ? "⏳" : "✅"}
@@ -200,7 +200,7 @@ export default function Dashboard() {
                 <button
                   onClick={() => marcarPublicado(c.id, c.title)}
                   disabled={publicando === c.id}
-                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-amber-200 text-amber-600 opacity-0 group-hover:opacity-100 hover:bg-amber-300 hover:text-amber-700 transition-all disabled:opacity-50 text-sm"
+                  className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-amber-200 text-amber-600 opacity-60 md:opacity-0 md:group-hover:opacity-100 hover:opacity-100 hover:bg-amber-300 hover:text-amber-700 transition-all disabled:opacity-50 text-sm"
                 >
                   {publicando === c.id ? "⏳" : "✅"}
                 </button>
