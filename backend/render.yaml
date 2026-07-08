@@ -7,8 +7,8 @@ services:
     startCommand: npm start
     envVars:
       - key: SUPABASE_URL
-        value: https://lgmbwovpbidxijirodrx.supabase.co
+        sync: false
       - key: SUPABASE_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxnbWJ3b3ZwYmlkeGlqaXJvZHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNzg4NTAsImV4cCI6MjA5ODY1NDg1MH0.FEcA-npJ6ZWHcnxNA7ysNMbw64RG_ZkevyPtlKqC5eI
+        sync: false
       - key: PORT
         value: "3001"

@@ -6,9 +6,11 @@ export default function QuickFab() {
   const navigate = useNavigate();
 
   const acoes = [
-    { icon: "📅", label: "Nova Atividade", path: "/conteudos" },
-    { icon: "🎥", label: "Novo Vídeo", path: "/conteudos" },
-    { icon: "📢", label: "Novo Aviso", path: "/conteudos" },
+    { icon: "📅", label: "Nova Atividade", path: "/conteudos?tipo=atividade" },
+    { icon: "🎥", label: "Novo Vídeo", path: "/conteudos?tipo=video" },
+    { icon: "📢", label: "Novo Aviso", path: "/conteudos?tipo=aviso" },
+    { icon: "💭", label: "Novo Pensamento", path: "/conteudos?tipo=pensamento" },
+    { icon: "❓", label: "Novo Quiz", path: "/conteudos?tipo=quiz" },
     { icon: "🎉", label: "Novo Feriado", path: "/feriados" },
   ];
 

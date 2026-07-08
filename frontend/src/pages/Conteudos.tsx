@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/Toast";
 import type { Conteudo, TipoConteudo, Equipa } from "../types";
@@ -37,8 +38,14 @@ export default function Conteudos() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    const tabUrl = searchParams.get("tipo") as TipoConteudo | null;
+    if (tabUrl && TABS.some((t) => t.tipo === tabUrl)) {
+      setActiveTab(tabUrl);
+      setShowModal("novo");
+    }
     fetchConteudos();
     supabase.from("equipas").select("*").order("created_at").then((r) => {
       if (r.data) setEquipas(r.data);
