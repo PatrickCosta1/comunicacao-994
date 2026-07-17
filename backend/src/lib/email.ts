@@ -51,7 +51,7 @@ export async function enviarEmail(subject: string, text: string): Promise<any> {
   console.log("--- EMAIL (simulado - sem servico configurado) ---");
   console.log("To:", to);
   console.log("Subject:", subject);
-  console.log("Body:", text);
+  console.log(`Body: [${text.length} caracteres]`);
   console.log("--- FIM ---");
   return { messageId: "simulado" };
 }
