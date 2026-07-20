@@ -116,7 +116,7 @@ function renderPensamento(equipas: any[]): string {
 
 // ─── Geração da mensagem ───────────────────────────────────────
 
-async function gerarMensagem(inicio: string, fim: string) {
+export async function gerarMensagem(inicio: string, fim: string) {
   const { data: conteudos } = await supabase
     .from("conteudos")
     .select("*, conteudos_equipas(equipa_id, equipas(id, nome, membros(nome)))")
