@@ -64,7 +64,7 @@ export async function startWhatsAppPairing(phoneNumber: string) {
 
   const persisted = await loadAuthState();
   const { version } = await fetchLatestBaileysVersion();
-  const creds = persisted?.creds || initAuthCreds();
+  let creds = persisted?.creds || initAuthCreds();
   const keyState = persisted?.keys || {};
   const persist = async () => {
     await saveAuthState({ creds, keys: keyState });
@@ -95,15 +95,17 @@ export async function startWhatsAppPairing(phoneNumber: string) {
 
   currentSession = { sock, state: sessionState };
 
-  sock.ev.on("creds.update", async () => {
+  sock.ev.on("creds.update", async (updatedCreds) => {
     try {
-      if (!sock.authState?.creds) {
+      if (!updatedCreds) {
         return;
       }
 
+      creds = updatedCreds;
+
       await saveAuthState({
-        creds: sock.authState.creds,
-        keys: sock.authState.keys as any,
+        creds,
+        keys: keyState,
       });
     } catch (error) {
       console.error("Falha ao persistir credenciais WhatsApp:", error);

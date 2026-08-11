@@ -20,7 +20,15 @@ export type PersistableKeyStore = {
 async function ensureRow() {
   const { error } = await supabase
     .from(TABLE)
-    .upsert({ id: SESSION_ID, updated_at: new Date().toISOString() }, { onConflict: "id" });
+    .upsert(
+      {
+        id: SESSION_ID,
+        creds_payload: encryptJson({}),
+        keys_payload: encryptJson({}),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
   if (error) {
     throw error;
@@ -45,6 +53,10 @@ export async function loadAuthState(): Promise<PersistedAuthState | null> {
 }
 
 export async function saveAuthState(state: PersistedAuthState) {
+  if (!state?.creds) {
+    throw new Error("credenciais WhatsApp ausentes");
+  }
+
   await ensureRow();
 
   const { error } = await supabase.from(TABLE).upsert(
