@@ -3,7 +3,7 @@ import { verifyCronSecret } from "../../middleware/verifyCronSecret";
 import { buildWeeklyPlan, getCurrentWeeklyRange } from "../../services/weeklyPlan";
 import { enviarEmail } from "../../lib/email";
 import { sendWhatsAppText } from "../../services/whatsapp/client";
-import { getWhatsAppPairingState, startWhatsAppPairing } from "../../services/whatsapp/pairing";
+import { getWhatsAppPairingState, listWhatsAppGroups, startWhatsAppPairing } from "../../services/whatsapp/pairing";
 
 const router = Router();
 
@@ -24,6 +24,15 @@ router.post("/whatsapp/pair", verifyCronSecret, async (req, res) => {
 
 router.get("/whatsapp/status", verifyCronSecret, async (_req, res) => {
   res.json({ success: true, state: getWhatsAppPairingState() });
+});
+
+router.get("/whatsapp/groups", verifyCronSecret, async (_req, res) => {
+  try {
+    const groups = await listWhatsAppGroups();
+    res.json({ success: true, groups });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "failed_to_list_groups" });
+  }
 });
 
 router.post("/trigger-weekly-plan", verifyCronSecret, async (_req, res) => {

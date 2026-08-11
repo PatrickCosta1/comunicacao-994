@@ -33,6 +33,25 @@ export function getWhatsAppPairingState() {
   return currentSession?.state || getInitialState();
 }
 
+export async function listWhatsAppGroups() {
+  if (!currentSession || currentSession.state.status !== "paired") {
+    throw new Error("WhatsApp ainda não está pareado");
+  }
+
+  const sock = currentSession.sock as any;
+  if (typeof sock.groupFetchAllParticipating !== "function") {
+    throw new Error("Função groupFetchAllParticipating indisponível na sessão atual");
+  }
+
+  const groups = await sock.groupFetchAllParticipating();
+  return Object.values(groups).map((group: any) => ({
+    id: group.id,
+    subject: group.subject,
+    desc: group.desc,
+    participantCount: Array.isArray(group.participants) ? group.participants.length : 0,
+  }));
+}
+
 export async function startWhatsAppPairing(phoneNumber: string) {
   if (currentSession?.state.status === "pairing") {
     return currentSession.state;
