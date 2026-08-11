@@ -8,7 +8,7 @@ import { getWhatsAppPairingState, listWhatsAppGroups, startWhatsAppPairing } fro
 const router = Router();
 router.post("/whatsapp/pair", verifyCronSecret, async (req, res) => {
   try {
-    const phoneNumber = String(req.body?.phoneNumber || "").trim();
+    const phoneNumber = String(req.body?.phoneNumber || req.query?.phoneNumber || "").trim();
     const state = await startWhatsAppPairing(phoneNumber);
 
     res.json({
@@ -17,7 +17,10 @@ router.post("/whatsapp/pair", verifyCronSecret, async (req, res) => {
       instructions: "Abre WhatsApp no telemóvel, vai a Dispositivos ligados e introduz o código mostrado.",
     });
   } catch (err: any) {
-    res.status(400).json({ error: err?.message || "failed_to_start_pairing" });
+    console.error("WhatsApp pairing falhou:", err);
+    const message = err?.message || "failed_to_start_pairing";
+    const status = /invalid|inválido/i.test(message) ? 400 : 500;
+    res.status(status).json({ error: message });
   }
 });
 
