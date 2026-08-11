@@ -97,11 +97,12 @@ export async function startWhatsAppPairing(phoneNumber: string) {
 
   sock.ev.on("creds.update", async (updatedCreds) => {
     try {
-      if (!updatedCreds) {
+      const currentCreds = updatedCreds || sock.authState?.creds;
+      if (!currentCreds) {
         return;
       }
 
-      creds = updatedCreds;
+      creds = currentCreds;
 
       await saveAuthState({
         creds,
