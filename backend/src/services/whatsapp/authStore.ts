@@ -1,0 +1,101 @@
+import { supabase } from "../../lib/supabase";
+import { decryptJson, encryptJson } from "./crypto";
+
+const TABLE = "whatsapp_auth_state";
+const SESSION_ID = "default";
+
+export type PersistedAuthState = {
+  creds: any;
+  keys: Record<string, Record<string, any>>;
+};
+
+export type PersistableKeyStore = {
+  get: (type: string, ids: string[]) => Promise<Record<string, any>>;
+  set: (data: Record<string, Record<string, any>>) => Promise<void>;
+  clear: () => Promise<void>;
+};
+
+async function ensureRow() {
+  const { error } = await supabase
+    .from(TABLE)
+    .upsert({ id: SESSION_ID, updated_at: new Date().toISOString() }, { onConflict: "id" });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function loadAuthState(): Promise<PersistedAuthState | null> {
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("creds_payload, keys_payload")
+    .eq("id", SESSION_ID)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return {
+    creds: decryptJson<any>(data.creds_payload),
+    keys: decryptJson<Record<string, Record<string, any>>>(data.keys_payload),
+  };
+}
+
+export async function saveAuthState(state: PersistedAuthState) {
+  await ensureRow();
+
+  const { error } = await supabase.from(TABLE).upsert(
+    {
+      id: SESSION_ID,
+      creds_payload: encryptJson(state.creds),
+      keys_payload: encryptJson(state.keys),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "id" }
+  );
+
+  if (error) {
+    throw error;
+  }
+}
+
+export function createPersistableKeyStore(
+  initialKeys: Record<string, Record<string, any>>,
+  persist: () => Promise<void>
+): PersistableKeyStore {
+  const keys = initialKeys;
+
+  return {
+    get: async (type, ids) => {
+      const bucket = keys[type] || {};
+      const result: Record<string, any> = {};
+
+      for (const id of ids) {
+        const value = bucket[id];
+        if (value !== undefined) {
+          result[id] = value;
+        }
+      }
+
+      return result;
+    },
+    set: async (data) => {
+      for (const [type, records] of Object.entries(data)) {
+        keys[type] = {
+          ...(keys[type] || {}),
+          ...records,
+        };
+      }
+
+      await persist();
+    },
+    clear: async () => {
+      for (const key of Object.keys(keys)) {
+        delete keys[key];
+      }
+
+      await persist();
+    },
+  };
+}
