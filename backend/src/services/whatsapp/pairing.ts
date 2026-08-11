@@ -155,17 +155,6 @@ export async function startWhatsAppPairing(phoneNumber: string) {
     });
   });
 
-  try {
-    await sock.waitForConnectionUpdate(async (update) => update.connection === "open", 15000);
-  } catch (error) {
-    try {
-      sock.end(undefined);
-    } catch {
-      // ignore shutdown errors
-    }
-    throw new Error("Não foi possível abrir a ligação WhatsApp para gerar o código de pareamento");
-  }
-
   let code: string;
   try {
     code = await sock.requestPairingCode(normalized);
