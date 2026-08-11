@@ -6,7 +6,6 @@ import { sendWhatsAppText } from "../../services/whatsapp/client";
 import { getWhatsAppPairingState, listWhatsAppGroups, startWhatsAppPairing } from "../../services/whatsapp/pairing";
 
 const router = Router();
-
 router.post("/whatsapp/pair", verifyCronSecret, async (req, res) => {
   try {
     const phoneNumber = String(req.body?.phoneNumber || "").trim();
