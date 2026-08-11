@@ -96,54 +96,73 @@ export async function startWhatsAppPairing(phoneNumber: string) {
   currentSession = { sock, state: sessionState };
 
   sock.ev.on("creds.update", async () => {
-    await saveAuthState({
-      creds: sock.authState.creds,
-      keys: sock.authState.keys as any,
-    });
+    try {
+      await saveAuthState({
+        creds: sock.authState.creds,
+        keys: sock.authState.keys as any,
+      });
+    } catch (error) {
+      console.error("Falha ao persistir credenciais WhatsApp:", error);
+    }
   });
 
-  sock.ev.on("connection.update", async (update) => {
-    if (update.connection === "open") {
-      currentSession = {
-        sock,
-        state: {
-          status: "paired",
-          phoneNumber: normalized,
-          updatedAt: new Date().toISOString(),
-        },
-      };
-      await persist();
-      return;
-    }
+  sock.ev.on("connection.update", (update) => {
+    void (async () => {
+      if (update.connection === "open") {
+        currentSession = {
+          sock,
+          state: {
+            status: "paired",
+            phoneNumber: normalized,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+        await persist();
+        return;
+      }
 
-    if (update.connection === "close") {
-      const statusCode = (update.lastDisconnect?.error as Boom | undefined)?.output?.statusCode;
-      if (statusCode === DisconnectReason.loggedOut) {
+      if (update.connection === "close") {
+        const statusCode = (update.lastDisconnect?.error as Boom | undefined)?.output?.statusCode;
+        if (statusCode === DisconnectReason.loggedOut) {
+          currentSession = {
+            sock,
+            state: {
+              status: "error",
+              phoneNumber: normalized,
+              error: "WhatsApp session logged out",
+              updatedAt: new Date().toISOString(),
+            },
+          };
+          return;
+        }
+
         currentSession = {
           sock,
           state: {
             status: "error",
             phoneNumber: normalized,
-            error: "WhatsApp session logged out",
+            error: `WhatsApp disconnected: ${String(statusCode || "unknown")}`,
             updatedAt: new Date().toISOString(),
           },
         };
-        return;
       }
-
-      currentSession = {
-        sock,
-        state: {
-          status: "error",
-          phoneNumber: normalized,
-          error: `WhatsApp disconnected: ${String(statusCode || "unknown")}`,
-          updatedAt: new Date().toISOString(),
-        },
-      };
-    }
+    })().catch((error) => {
+      console.error("Falha ao processar connection.update do WhatsApp:", error);
+    });
   });
 
-  const code = await sock.requestPairingCode(normalized);
+  let code: string;
+  try {
+    code = await sock.requestPairingCode(normalized);
+  } catch (error) {
+    try {
+      sock.end(undefined);
+    } catch {
+      // ignore shutdown errors
+    }
+    throw error;
+  }
+
   sessionState.code = code;
   sessionState.updatedAt = new Date().toISOString();
 

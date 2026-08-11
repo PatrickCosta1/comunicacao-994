@@ -30,6 +30,22 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", version: "2" });
 });
 
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && "body" in err) {
+    return res.status(400).json({ error: "invalid_json" });
+  }
+
+  next(err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection capturada:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception capturada:", error);
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Backend 994-Comunicação a correr em http://localhost:${PORT}`);
