@@ -3,8 +3,28 @@ import { verifyCronSecret } from "../../middleware/verifyCronSecret";
 import { buildWeeklyPlan, getCurrentWeeklyRange } from "../../services/weeklyPlan";
 import { enviarEmail } from "../../lib/email";
 import { sendWhatsAppText } from "../../services/whatsapp/client";
+import { getWhatsAppPairingState, startWhatsAppPairing } from "../../services/whatsapp/pairing";
 
 const router = Router();
+
+router.post("/whatsapp/pair", verifyCronSecret, async (req, res) => {
+  try {
+    const phoneNumber = String(req.body?.phoneNumber || "").trim();
+    const state = await startWhatsAppPairing(phoneNumber);
+
+    res.json({
+      success: true,
+      state,
+      instructions: "Abre WhatsApp no telemóvel, vai a Dispositivos ligados e introduz o código mostrado.",
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err?.message || "failed_to_start_pairing" });
+  }
+});
+
+router.get("/whatsapp/status", verifyCronSecret, async (_req, res) => {
+  res.json({ success: true, state: getWhatsAppPairingState() });
+});
 
 router.post("/trigger-weekly-plan", verifyCronSecret, async (_req, res) => {
   try {

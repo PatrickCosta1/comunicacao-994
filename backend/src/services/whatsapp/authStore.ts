@@ -13,6 +13,8 @@ export type PersistableKeyStore = {
   get: (type: string, ids: string[]) => Promise<Record<string, any>>;
   set: (data: Record<string, Record<string, any>>) => Promise<void>;
   clear: () => Promise<void>;
+  isInTransaction: () => boolean;
+  transaction: <T>(exec: () => Promise<T>, _key: string) => Promise<T>;
 };
 
 async function ensureRow() {
@@ -97,5 +99,7 @@ export function createPersistableKeyStore(
 
       await persist();
     },
+    isInTransaction: () => false,
+    transaction: async <T>(exec: () => Promise<T>) => exec(),
   };
 }
