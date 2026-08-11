@@ -97,6 +97,10 @@ export async function startWhatsAppPairing(phoneNumber: string) {
 
   sock.ev.on("creds.update", async () => {
     try {
+      if (!sock.authState?.creds) {
+        return;
+      }
+
       await saveAuthState({
         creds: sock.authState.creds,
         keys: sock.authState.keys as any,
@@ -150,6 +154,17 @@ export async function startWhatsAppPairing(phoneNumber: string) {
       console.error("Falha ao processar connection.update do WhatsApp:", error);
     });
   });
+
+  try {
+    await sock.waitForConnectionUpdate(async (update) => update.connection === "open", 15000);
+  } catch (error) {
+    try {
+      sock.end(undefined);
+    } catch {
+      // ignore shutdown errors
+    }
+    throw new Error("Não foi possível abrir a ligação WhatsApp para gerar o código de pareamento");
+  }
 
   let code: string;
   try {
