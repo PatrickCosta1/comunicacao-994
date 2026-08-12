@@ -46,10 +46,30 @@ export async function loadAuthState(): Promise<PersistedAuthState | null> {
     return null;
   }
 
-  return {
-    creds: decryptJson<any>(data.creds_payload),
-    keys: decryptJson<Record<string, Record<string, any>>>(data.keys_payload),
-  };
+  try {
+    const creds = decryptJson<any>(data.creds_payload);
+    const keys = decryptJson<Record<string, Record<string, any>>>(data.keys_payload);
+
+    // Valida que os campos binários vieram como Uint8Array/Buffer.
+    // Credenciais gravadas antes da correção de serialização ficam corrompidas
+    // (buffers como objetos comuns) e quebram o handshake do Baileys.
+    const noiseKey = creds?.noiseKey;
+    const identityKey = creds?.signedIdentityKey;
+    const hasCorruptBytes =
+      (noiseKey?.public && !(noiseKey.public instanceof Uint8Array)) ||
+      (noiseKey?.private && !(noiseKey.private instanceof Uint8Array)) ||
+      (identityKey?.public && !(identityKey.public instanceof Uint8Array));
+
+    if (hasCorruptBytes) {
+      console.warn("⚠️ WhatsApp: credenciais corrompidas detetadas, a iniciar nova sessão");
+      return null;
+    }
+
+    return { creds, keys };
+  } catch (err) {
+    console.warn("⚠️ WhatsApp: falha ao ler credenciais, a iniciar nova sessão:", err);
+    return null;
+  }
 }
 
 export async function saveAuthState(state: PersistedAuthState) {
