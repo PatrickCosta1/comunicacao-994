@@ -160,6 +160,10 @@ export async function startWhatsAppPairing(phoneNumber: string) {
 
   let code: string;
   try {
+    // Espera o WebSocket físico abrir (handshake) antes de pedir o pairing code.
+    // Nota: `waitForConnectionUpdate(connection === "open")` NÃO funciona aqui,
+    // porque "open" só acontece após login completo, que nunca ocorre no pairing.
+    await sock.waitForSocketOpen();
     code = await sock.requestPairingCode(normalized);
   } catch (error) {
     try {
