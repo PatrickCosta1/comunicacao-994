@@ -4,7 +4,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "node node_modules/typescript/bin/tsc || true",
-    "start": "node node_modules/tsx/dist/cli.mjs src/index.ts"
+    "start": "node node_modules/tsx/dist/cli.mjs src/index.ts",
+    "pair:whatsapp": "tsx src/scripts/pairWhatsApp.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
