@@ -48,9 +48,50 @@ interface SecaoConfig {
   usarDateStart?: boolean;
   /** negrito no título do item */
   negrito?: boolean;
+  /** se false, a secção não aparece na mensagem */
+  ativo?: boolean;
+}
+
+interface MensagemConfig {
+  saudacao: string;
+  cabecalho: string;
+  despedida: string;
+  seccoes: SecaoConfig[];
+}
+
+const DEFAULT_CONFIG: MensagemConfig = {
+  saudacao: "Bom dia a todos! 🙌",
+  cabecalho: "Relativamente ao plano semanal de {data}:",
+  despedida: "Boa semana a todos! 🚀",
+  seccoes: [
+    { tipo: "atividade", titulo: "Atividades", emoji: "📅", ativo: true, usarDateStart: true },
+    { tipo: "video", titulo: "Vídeos da Semana", emoji: "🎥", negrito: true, ativo: true },
+    { tipo: "feriado", titulo: "Feriados", emoji: "🎉", pubPrefix: false, ativo: true },
+    { tipo: "aviso", titulo: "Avisos", emoji: "📢", ativo: true },
+    { tipo: "quiz", titulo: "Quizzes", emoji: "❓", negrito: true, ativo: true },
+    { tipo: "pensamento", titulo: "Pensamento do Fundador", emoji: "💭", ativo: true },
+  ],
+};
+
+async function getMensagemConfig(): Promise<MensagemConfig> {
+  const { data } = await supabase
+    .from("mensagem_config")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (!data) return DEFAULT_CONFIG;
+
+  return {
+    saudacao: data.saudacao || DEFAULT_CONFIG.saudacao,
+    cabecalho: data.cabecalho || DEFAULT_CONFIG.cabecalho,
+    despedida: data.despedida || DEFAULT_CONFIG.despedida,
+    seccoes: Array.isArray(data.seccoes) && data.seccoes.length ? data.seccoes : DEFAULT_CONFIG.seccoes,
+  };
 }
 
 function renderSecao(conteudos: any[], cfg: SecaoConfig): string {
+  if (cfg.ativo === false) return "";
   const items = (conteudos || []).filter(
     (c) => c.tipo === cfg.tipo && c.estado !== "publicado"
   );
@@ -71,13 +112,14 @@ function renderSecao(conteudos: any[], cfg: SecaoConfig): string {
   return bloc + `\n`;
 }
 
-function renderAtividades(conteudos: any[]): string {
+function renderAtividades(conteudos: any[], cfg: SecaoConfig): string {
+  if (cfg.ativo === false) return "";
   const items = (conteudos || []).filter(
     (c) => c.tipo === "atividade" && c.estado !== "publicado"
   );
   if (!items.length) return "";
 
-  let bloc = `📅 Atividades:\n`;
+  let bloc = `${cfg.emoji} ${cfg.titulo}:\n`;
   for (const c of items) {
     const d = c.date_start ? isoDate(c.date_start) : null;
     const dataStr = d ? ptDate(d) : "";
@@ -102,7 +144,8 @@ function renderAtividades(conteudos: any[]): string {
   return bloc;
 }
 
-function renderPensamento(equipas: any[]): string {
+function renderPensamento(equipas: any[], cfg: SecaoConfig): string {
+  if (cfg.ativo === false) return "";
   const thursday = getNextThursday();
   const d = isoDate(thursday);
   const eqPensamentos = (equipas || []).find(
@@ -111,7 +154,7 @@ function renderPensamento(equipas: any[]): string {
   const nomes = eqPensamentos?.membros?.length
     ? eqPensamentos.membros.map((m: any) => m.nome.split(" ")[0]).join(", ")
     : "";
-  return `💭 Pensamento do Fundador ${dataDDMM(d)}: ${nomes}\n\n`;
+  return `${cfg.emoji} ${cfg.titulo} ${dataDDMM(d)}: ${nomes}\n\n`;
 }
 
 // ─── Geração da mensagem ───────────────────────────────────────
@@ -145,17 +188,24 @@ export async function gerarMensagem(inicio: string, fim: string) {
     .order("created_at");
 
   const dataInicio = isoDate(inicio);
-  const cabecalho = `Relativamente ao plano semanal de ${dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })}:\n\n`;
+  const config = await getMensagemConfig();
+  const secao = (tipo: string) => config.seccoes.find((s) => s.tipo === tipo) || DEFAULT_CONFIG.seccoes.find((s) => s.tipo === tipo)!;
+
+  const cabecalho = config.cabecalho.replace(
+    "{data}",
+    dataInicio.toLocaleDateString("pt-PT", { day: "numeric", month: "long" })
+  );
+
   const saida = [
-    `Bom dia a todos! 🙌\n\n`,
-    cabecalho,
-    renderAtividades(todosConteudos),
-    renderSecao(todosConteudos, { tipo: "video", titulo: "Vídeos da Semana", emoji: "🎥", negrito: true }),
-    renderSecao(todosConteudos, { tipo: "feriado", titulo: "Feriados", emoji: "🎉", pubPrefix: false }),
-    renderSecao(todosConteudos, { tipo: "aviso", titulo: "Avisos", emoji: "📢" }),
-    renderSecao(todosConteudos, { tipo: "quiz", titulo: "Quizzes", emoji: "❓", negrito: true }),
-    renderPensamento(equipas || []),
-    `Boa semana a todos! 🚀`,
+    config.saudacao ? `${config.saudacao}\n\n` : "",
+    cabecalho ? `${cabecalho}\n\n` : "",
+    renderAtividades(todosConteudos, secao("atividade")),
+    renderSecao(todosConteudos, secao("video")),
+    renderSecao(todosConteudos, secao("feriado")),
+    renderSecao(todosConteudos, secao("aviso")),
+    renderSecao(todosConteudos, secao("quiz")),
+    renderPensamento(equipas || [], secao("pensamento")),
+    config.despedida ? config.despedida : "",
   ];
 
   const msg = saida.join("");
@@ -167,6 +217,39 @@ export async function gerarMensagem(inicio: string, fim: string) {
 
   return { mensagem: msg, conteudos: todosConteudos, dataInicio };
 }
+
+// GET /api/mensagens/config - Obter configuração do plano semanal
+router.get("/config", async (_req: Request, res: Response) => {
+  const config = await getMensagemConfig();
+  res.json(config);
+});
+
+// PUT /api/mensagens/config - Atualizar configuração do plano semanal
+router.put("/config", async (req: Request, res: Response) => {
+  const { saudacao, cabecalho, despedida, seccoes } = req.body;
+
+  const clean = (v: any, fallback: string) => (typeof v === "string" ? v.trim() : fallback);
+  const novaConfig: MensagemConfig = {
+    saudacao: clean(saudacao, DEFAULT_CONFIG.saudacao),
+    cabecalho: clean(cabecalho, DEFAULT_CONFIG.cabecalho),
+    despedida: clean(despedida, DEFAULT_CONFIG.despedida),
+    seccoes: Array.isArray(seccoes) && seccoes.length ? seccoes : DEFAULT_CONFIG.seccoes,
+  };
+
+  const { data, error } = await supabase
+    .from("mensagem_config")
+    .upsert({ id: 1, ...novaConfig, updated_at: new Date().toISOString() }, { onConflict: "id" })
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    saudacao: data.saudacao,
+    cabecalho: data.cabecalho,
+    despedida: data.despedida,
+    seccoes: data.seccoes,
+  });
+});
 
 // GET /api/mensagens/semanal - Gerar mensagem semanal
 router.get("/semanal", async (_req: Request, res: Response) => {

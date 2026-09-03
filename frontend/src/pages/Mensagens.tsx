@@ -1,12 +1,65 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const API = "/api";
+
+type Secao = {
+  tipo: string;
+  titulo: string;
+  emoji: string;
+  ativo: boolean;
+  negrito?: boolean;
+  pubPrefix?: boolean;
+  usarDateStart?: boolean;
+};
+
+type MensagemConfig = {
+  saudacao: string;
+  cabecalho: string;
+  despedida: string;
+  seccoes: Secao[];
+};
+
+const DEFAULT_CONFIG: MensagemConfig = {
+  saudacao: "Bom dia a todos! 🙌",
+  cabecalho: "Relativamente ao plano semanal de {data}:",
+  despedida: "Boa semana a todos! 🚀",
+  seccoes: [
+    { tipo: "atividade", titulo: "Atividades", emoji: "📅", ativo: true, usarDateStart: true },
+    { tipo: "video", titulo: "Vídeos da Semana", emoji: "🎥", negrito: true, ativo: true },
+    { tipo: "feriado", titulo: "Feriados", emoji: "🎉", pubPrefix: false, ativo: true },
+    { tipo: "aviso", titulo: "Avisos", emoji: "📢", ativo: true },
+    { tipo: "quiz", titulo: "Quizzes", emoji: "❓", negrito: true, ativo: true },
+    { tipo: "pensamento", titulo: "Pensamento do Fundador", emoji: "💭", ativo: true },
+  ],
+};
 
 export default function Mensagens() {
   const [mensagem, setMensagem] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // Config
+  const [config, setConfig] = useState<MensagemConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configStatus, setConfigStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [configOpen, setConfigOpen] = useState(false);
+
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    setConfigLoading(true);
+    try {
+      const res = await fetch(`${API}/mensagens/config`);
+      const data = await res.json();
+      setConfig({ ...DEFAULT_CONFIG, ...data, seccoes: data.seccoes?.length ? data.seccoes : DEFAULT_CONFIG.seccoes });
+    } catch {
+      setConfig(DEFAULT_CONFIG);
+    }
+    setConfigLoading(false);
+  };
 
   const gerarSemanal = async () => {
     setLoading(true);
@@ -46,11 +99,131 @@ export default function Mensagens() {
     }
   };
 
+  const guardarConfig = async () => {
+    if (!config) return;
+    setConfigStatus(null);
+    try {
+      const res = await fetch(`${API}/mensagens/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(config),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setConfigStatus({ ok: false, msg: `❌ ${data.error}` });
+      } else {
+        setConfigStatus({ ok: true, msg: "✅ Configuração guardada!" });
+      }
+    } catch {
+      setConfigStatus({ ok: false, msg: "❌ Erro ao guardar configuração." });
+    }
+  };
+
+  const updateSecao = (tipo: string, patch: Partial<Secao>) => {
+    if (!config) return;
+    setConfig({
+      ...config,
+      seccoes: config.seccoes.map((s) => (s.tipo === tipo ? { ...s, ...patch } : s)),
+    });
+  };
+
+  const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-scout-500 outline-none transition-shadow";
+
   return (
     <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">💬 Mensagens</h1>
         <p className="text-gray-500 mt-1">Gera a mensagem semanal e envia por email.</p>
+      </div>
+
+      {/* Personalizar Mensagem */}
+      <div className="bg-white border border-gray-200 rounded-xl">
+        <button
+          onClick={() => setConfigOpen(!configOpen)}
+          className="w-full flex items-center justify-between px-6 py-4 text-left"
+        >
+          <span className="font-semibold text-gray-800">🎛️ Personalizar Mensagem</span>
+          <span className="text-gray-400 text-sm">{configOpen ? "▲" : "▼"}</span>
+        </button>
+
+        {configOpen && (
+          <div className="px-6 pb-6 space-y-5 border-t border-gray-100 pt-4">
+            {configLoading ? (
+              <p className="text-sm text-gray-400">A carregar configuração...</p>
+            ) : config ? (
+              <>
+                {/* Textos fixos */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-gray-700">Saudação</label>
+                  <input
+                    className={inputCls}
+                    value={config.saudacao}
+                    onChange={(e) => setConfig({ ...config, saudacao: e.target.value })}
+                    placeholder="Bom dia a todos! 🙌"
+                  />
+
+                  <label className="block text-sm font-semibold text-gray-700">Cabeçalho (usa {"{data}"} para a data)</label>
+                  <input
+                    className={inputCls}
+                    value={config.cabecalho}
+                    onChange={(e) => setConfig({ ...config, cabecalho: e.target.value })}
+                    placeholder="Relativamente ao plano semanal de {data}:"
+                  />
+
+                  <label className="block text-sm font-semibold text-gray-700">Despedida</label>
+                  <input
+                    className={inputCls}
+                    value={config.despedida}
+                    onChange={(e) => setConfig({ ...config, despedida: e.target.value })}
+                    placeholder="Boa semana a todos! 🚀"
+                  />
+                </div>
+
+                {/* Secções (departamentos) */}
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Secções / Departamentos</h3>
+                  <div className="space-y-2">
+                    {config.seccoes.map((s) => (
+                      <div key={s.tipo} className="flex items-center gap-2 border border-gray-100 rounded-lg p-2">
+                        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={s.ativo}
+                            onChange={(e) => updateSecao(s.tipo, { ativo: e.target.checked })}
+                            className="w-4 h-4 accent-scout-600"
+                          />
+                          <span className={`text-lg ${s.ativo ? "" : "opacity-40 grayscale"}`}>{s.emoji}</span>
+                        </label>
+                        <input
+                          className={`flex-1 px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-scout-500 outline-none transition-shadow ${s.ativo ? "" : "opacity-60"}`}
+                          value={s.titulo}
+                          onChange={(e) => updateSecao(s.tipo, { titulo: e.target.value })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">
+                    Desliga uma secção para ela não aparecer na mensagem semanal.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={guardarConfig}
+                    className="px-5 py-2.5 bg-scout-600 text-white rounded-lg text-sm font-medium hover:bg-scout-700 transition-colors"
+                  >
+                    💾 Guardar Configuração
+                  </button>
+                  {configStatus && (
+                    <span className={`text-sm ${configStatus.ok ? "text-green-600" : "text-red-600"}`}>{configStatus.msg}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-red-500">Erro ao carregar configuração.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Gerar Mensagem Semanal */}

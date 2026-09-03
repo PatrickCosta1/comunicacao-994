@@ -76,9 +76,8 @@ insert into equipas (nome, descricao) values
   ('🎥 Vídeos', 'Editar e produzir vídeos promocionais'),
   ('✍️ Textos', 'Escrever textos e publicar nas redes'),
   ('🎂 Aniversários', 'Publicar story de aniversários'),
-  ('🎉 Feriados', 'Publicar arte em feriados'),
+  ('📢 Avisos & Feriados', 'Publicar avisos e arte de feriados nos storys'),
   ('💭 Pensamentos', 'Publicar frase do fundador semanalmente'),
   ('❓ Quizzes', 'Criar quizzes para os storys'),
-  ('📢 Avisos', 'Publicar avisos nos storys'),
   ('🌐 Website', 'Manutenção do site')
 on conflict do nothing;
