@@ -4,13 +4,11 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "node node_modules/typescript/bin/tsc || true",
-    "start": "node node_modules/tsx/dist/cli.mjs src/index.ts",
-    "pair:whatsapp": "tsx src/scripts/pairWhatsApp.ts"
+    "start": "node node_modules/tsx/dist/cli.mjs src/index.ts"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",
     "@supabase/supabase-js": "^2.45.0",
-    "@whiskeysockets/baileys": "^6.17.16",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^4.21.0",
