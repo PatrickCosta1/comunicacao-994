@@ -74,20 +74,25 @@ const DEFAULT_CONFIG: MensagemConfig = {
 };
 
 async function getMensagemConfig(): Promise<MensagemConfig> {
-  const { data } = await supabase
-    .from("mensagem_config")
-    .select("*")
-    .eq("id", 1)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from("mensagem_config")
+      .select("*")
+      .eq("id", 1)
+      .maybeSingle();
 
-  if (!data) return DEFAULT_CONFIG;
+    if (error || !data) return DEFAULT_CONFIG;
 
-  return {
-    saudacao: data.saudacao || DEFAULT_CONFIG.saudacao,
-    cabecalho: data.cabecalho || DEFAULT_CONFIG.cabecalho,
-    despedida: data.despedida || DEFAULT_CONFIG.despedida,
-    seccoes: Array.isArray(data.seccoes) && data.seccoes.length ? data.seccoes : DEFAULT_CONFIG.seccoes,
-  };
+    return {
+      saudacao: data.saudacao || DEFAULT_CONFIG.saudacao,
+      cabecalho: data.cabecalho || DEFAULT_CONFIG.cabecalho,
+      despedida: data.despedida || DEFAULT_CONFIG.despedida,
+      seccoes: Array.isArray(data.seccoes) && data.seccoes.length ? data.seccoes : DEFAULT_CONFIG.seccoes,
+    };
+  } catch {
+    // tabela ainda não existe na BD — usa valores padrão
+    return DEFAULT_CONFIG;
+  }
 }
 
 function renderSecao(conteudos: any[], cfg: SecaoConfig): string {
@@ -236,19 +241,32 @@ router.put("/config", async (req: Request, res: Response) => {
     seccoes: Array.isArray(seccoes) && seccoes.length ? seccoes : DEFAULT_CONFIG.seccoes,
   };
 
-  const { data, error } = await supabase
-    .from("mensagem_config")
-    .upsert({ id: 1, ...novaConfig, updated_at: new Date().toISOString() }, { onConflict: "id" })
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from("mensagem_config")
+      .upsert({ id: 1, ...novaConfig, updated_at: new Date().toISOString() }, { onConflict: "id" })
+      .select()
+      .single();
 
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({
-    saudacao: data.saudacao,
-    cabecalho: data.cabecalho,
-    despedida: data.despedida,
-    seccoes: data.seccoes,
-  });
+    if (error) {
+      return res.status(500).json({
+        error: error.message,
+        dica: "A tabela 'mensagem_config' ainda não existe no Supabase. Corre a migration migration_mensagem_config.sql no SQL Editor.",
+      });
+    }
+
+    res.json({
+      saudacao: data.saudacao,
+      cabecalho: data.cabecalho,
+      despedida: data.despedida,
+      seccoes: data.seccoes,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: err?.message || "Erro ao guardar configuração",
+      dica: "A tabela 'mensagem_config' ainda não existe no Supabase. Corre a migration migration_mensagem_config.sql no SQL Editor.",
+    });
+  }
 });
 
 // GET /api/mensagens/semanal - Gerar mensagem semanal
